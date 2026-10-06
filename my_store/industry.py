@@ -164,14 +164,16 @@ BRAND_VOICE = (
 )
 
 
-# The model the chat runs on. Unset: the reference default (Claude Sonnet 5, thinking at low
-# effort). STORE_AGENT_MODEL=claude-haiku-4-5 halves the per-token price ($1/$5 vs $2/$10 per
-# million); Haiku 4.5 does not take the effort setting, so thinking is turned off for it.
-# Run the evals before and after switching: Haiku follows long rule lists less reliably.
+# The model the chat runs on: Claude Haiku 4.5 by default, the owner's choice for cost ($1/$5
+# per million tokens, half of Claude Sonnet 5's $2/$10). Haiku 4.5 does not take the effort
+# setting, so thinking is off for it. STORE_AGENT_MODEL=claude-sonnet-5 switches back (thinking
+# at low effort, the reference default). Haiku follows long rule lists less reliably: run the
+# evals on both when there is credit.
+DEFAULT_MODEL = "claude-haiku-4-5"
+
+
 def model_overrides() -> dict[str, Any]:
-    model = os.environ.get("STORE_AGENT_MODEL", "").strip()
-    if not model:
-        return {}
+    model = os.environ.get("STORE_AGENT_MODEL", "").strip() or DEFAULT_MODEL
     out: dict[str, Any] = {"model": model}
     if model.startswith("claude-haiku"):
         out["thinking_effort"] = None
