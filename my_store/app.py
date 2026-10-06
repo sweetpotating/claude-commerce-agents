@@ -122,6 +122,20 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Shopping agent", lifespan=lifespan)
+
+
+@app.exception_handler(HTTPException)
+async def http_error(request: Request, error: HTTPException) -> JSONResponse:
+    """FastAPI's own shape ({"detail": ...}), plus ``retry_after`` in seconds on a 429 so a
+    client can say "busy, retrying" and try again on time (eval item 37)."""
+    body: dict[str, Any] = {"detail": error.detail}
+    headers = dict(error.headers or {})
+    if error.status_code == 429:
+        body["retry_after"] = int(headers.get("Retry-After", "30"))
+        headers.setdefault("Retry-After", str(body["retry_after"]))
+    return JSONResponse(body, status_code=error.status_code, headers=headers)
+
+
 STATIC = Path(__file__).parent / "static"
 
 
@@ -218,6 +232,8 @@ def load_test(request: Request) -> bool:
 
 
 async def refresh_catalog() -> list[Any]:
+    """The catalog index (read at boot, re-read every 10 minutes in the background), and
+    the vocabulary and opening chips made from it whenever it has changed."""
     if not isinstance(backend, ShopifyUCPBackend):
         return []
     try:
@@ -225,10 +241,29 @@ async def refresh_catalog() -> list[Any]:
     except Exception:
         logger.warning("catalog index failed", exc_info=True)
         return []
-    if index:
+    if index and backend.index_version != _catalog_seen["version"]:
+        _catalog_seen["version"] = backend.index_version
         discovery.set_vocabulary(backend.vocabulary())
         discovery.set_starters(list(backend.collections()))
     return index
+
+
+_catalog_seen = {"version": -1}
+CATALOG_REFRESH_TOKEN = os.environ.get("CATALOG_REFRESH_TOKEN", "")
+
+
+@app.post("/api/catalog/refresh", include_in_schema=False)
+async def catalog_refresh(token: str = "", x_refresh_token: str | None = Header(default=None)) -> dict:
+    """Re-read the catalog now, e.g. from a Shopify Flow "product created" action or after
+    adding products (eval item 42). Needs CATALOG_REFRESH_TOKEN; unset, it does not exist."""
+    given = x_refresh_token or token
+    if not CATALOG_REFRESH_TOKEN or not secrets.compare_digest(given, CATALOG_REFRESH_TOKEN):
+        raise HTTPException(404)
+    if not isinstance(backend, ShopifyUCPBackend):
+        return {"products": 0}
+    await backend.refresh_index()
+    await refresh_catalog()
+    return {"store": backend.health()}
 
 
 @app.get("/api/starters")
@@ -334,6 +369,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     # context, so "compare this with the mug" or "compare these two" needs no question.
     ctx.page.extra = {**ctx.page.extra, **compare.context_extra(viewing, s.last_shown)}
     # What the store sells, by collection: "what do you sell" needs no searches.
+    await refresh_catalog()  # cached; kicks a background re-read when 10 minutes old
     if sells := store_sells(s, examples=bool(discovery.OVERVIEW.search(body.message))):
         ctx.page.extra["store_sells"] = sells
     note_turn(s.state, body.message)
@@ -355,6 +391,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         flow = TextFlow()
         # A search that failed this turn: its chips would fail too, so only cart chips.
         search_down = degraded
+        tool_failed = False  # any tool error this turn: no chip that just retries it
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
@@ -374,6 +411,8 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                     guards.token_budget.charge(event.data.get("usage") or {})
                 if event.type == "tool_result" and event.data.get("tool") == "search_products":
                     search_down |= bool(event.data.get("is_error"))
+                if event.type == "tool_result" and event.data.get("is_error"):
+                    tool_failed = True
                 if event.type == "tool_result" and event.data.get("tool") == "add_to_cart":
                     if not event.data.get("is_error"):
                         funnel.record(s.session_id, "added_to_cart", source="chat")
@@ -387,7 +426,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                 if event.type == "ui":
                     component, payload = event.data.get("component"), event.data.get("payload") or {}
                     if component == "suggestions":
-                        kept = clean_chips(s, payload.get("suggestions") or [], search_down)
+                        kept = clean_chips(s, payload.get("suggestions") or [], search_down, tool_failed)
                         if not kept:
                             continue  # the host adds checked ones at the end
                         event = AgentEvent.ui("suggestions", {**payload, "suggestions": kept})
@@ -421,7 +460,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                 if cards:
                     funnel.record(s.session_id, "products_shown", source="fallback")
                     yield to_sse(AgentEvent.ui("products", cards))
-                if chips := clean_chips(s, chips, search_down):
+                if chips := clean_chips(s, chips, search_down, tool_failed):
                     has_chips = True
                     yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
                 if s.messages and s.messages[-1].get("role") == "user":  # keep turns alternating
@@ -444,7 +483,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         for event in held:
             yield to_sse(event)
         if not has_chips and not outage:  # during an outage a chip would only fail again
-            if chips := clean_chips(s, discovery.fallback_chips(titles), search_down):
+            if chips := clean_chips(s, discovery.fallback_chips(titles), search_down, tool_failed):
                 yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
         if not failed:
             await agent.update_memory(s.messages, ctx)
@@ -464,11 +503,13 @@ async def blank_message(s: Session) -> AsyncIterator[str]:
     yield to_sse(AgentEvent.ui("suggestions", {"suggestions": list(discovery.STARTER_CHIPS)}))
 
 
-def clean_chips(s: Session, chips: list[str], degraded: bool) -> list[str]:
+def clean_chips(s: Session, chips: list[str], degraded: bool, after_error: bool = False) -> list[str]:
     """Chips the store can honour (chips.py); while search is failing, only cart chips."""
     # Product checks only once the catalog is read; places count as catalog words then.
     vocabulary = discovery.VOCABULARY | set(PLACE_NAMES) if discovery.VOCABULARY else set()
-    kept = chip_rules.clean(chips, vocabulary=vocabulary, cart_titles=s.cart_titles, degraded=degraded)
+    kept = chip_rules.clean(
+        chips, vocabulary=vocabulary, cart_titles=s.cart_titles, degraded=degraded, after_error=after_error
+    )
     if degraded and not kept:
         kept = chip_rules.outage_chips(s.cart_titles)
     return kept

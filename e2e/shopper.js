@@ -31,7 +31,7 @@ fs.mkdirSync(out, { recursive: true });
   check("greeting chips are the store's collections", starters.length >= 3 && starters.every((c) => c.startsWith("Shop ")), starters.join(" / "));
 
   // 1. Discovery from a chip, then Add to cart on a card.
-  await page.locator(".chip", { hasText: "Gifts" }).first().click(); await settle();
+  await page.locator(".chip").first().click(); await settle();
   const cards = await page.$$eval(".product .name", (n) => n.map((x) => x.textContent));
   check("chip -> product cards", cards.length >= 2, cards.slice(0, 3).join(" / "));
   await page.locator(".product button", { hasText: /^Add to cart$/ }).first().click();

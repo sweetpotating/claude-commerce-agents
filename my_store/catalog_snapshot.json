@@ -3,37 +3,6 @@
 "products": [
 {
 "product": {
-"product_id": "gid://shopify/Product/9061065588926",
-"title": "The Pragmatic Programmer",
-"price": 34.9,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/j2w14x.png?v=1791291774",
-"category": "Books",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/the-pragmatic-programmer",
-"Author": "Hunt & Thomas",
-"Delivery": "Shipped"
-},
-"in_stock": true,
-"short_description": "Classic guide to craft and practical habits for software developers. By Hunt & Thomas.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Books",
-"Retail and Gifts"
-],
-"tags": [
-"books",
-"global",
-"iknowledge",
-"retail"
-],
-"variant_id": "gid://shopify/ProductVariant/49234715869374"
-},
-{
-"product": {
 "product_id": "gid://shopify/Product/9061066080446",
 "title": "Atomic Habits",
 "price": 24.9,
@@ -43,11 +12,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/atomic-habits",
-"Author": "James Clear",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Small changes that compound into remarkable results. By James Clear.",
+"short_description": "Small changes that compound into remarkable results.",
 "options": {},
 "option_values": {}
 },
@@ -56,6 +25,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -74,11 +44,12 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/sapiens-a-brief-history-of-humankind",
+"Valid for": "30 days",
 "Author": "Yuval Noah Harari",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "How Homo sapiens came to dominate the world. By Yuval Noah Harari.",
+"short_description": "A brief history of humankind, from the Stone Age to the present. By Yuval Noah Harari.",
 "options": {},
 "option_values": {}
 },
@@ -87,6 +58,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -105,11 +77,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/thinking-fast-and-slow",
-"Author": "Daniel Kahneman",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Two systems of thought and how they shape decisions. By Daniel Kahneman.",
+"short_description": "Two systems of thought and how they shape decisions.",
 "options": {},
 "option_values": {}
 },
@@ -118,6 +90,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -136,11 +109,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/the-lean-startup",
-"Author": "Eric Ries",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Build and test products with continuous innovation. By Eric Ries.",
+"short_description": "Build and test products with continuous innovation.",
 "options": {},
 "option_values": {}
 },
@@ -149,6 +122,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -167,11 +141,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/deep-work",
-"Author": "Cal Newport",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Rules for focused success in a distracted world. By Cal Newport.",
+"short_description": "Rules for focused success in a distracted world.",
 "options": {},
 "option_values": {}
 },
@@ -180,6 +154,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -198,11 +173,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/zero-to-one",
-"Author": "Peter Thiel",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Notes on startups and how to build the future. By Peter Thiel.",
+"short_description": "Notes on startups and how to build the future.",
 "options": {},
 "option_values": {}
 },
@@ -211,6 +186,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -229,11 +205,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/project-hail-mary",
-"Author": "Andy Weir",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "A lone astronaut must save Earth. By Andy Weir.",
+"short_description": "A lone astronaut must save Earth.",
 "options": {},
 "option_values": {}
 },
@@ -242,6 +218,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -260,11 +237,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/the-midnight-library",
-"Author": "Matt Haig",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "A library of every life you could have lived. By Matt Haig.",
+"short_description": "A library of every life you could have lived.",
 "options": {},
 "option_values": {}
 },
@@ -273,6 +250,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -291,11 +269,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/braiding-sweetgrass",
-"Author": "Robin Wall Kimmerer",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Indigenous wisdom, science and the teachings of plants. By Robin Wall Kimmerer.",
+"short_description": "Indigenous wisdom, science and the teachings of plants.",
 "options": {},
 "option_values": {}
 },
@@ -304,6 +282,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -322,11 +301,12 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/designing-data-intensive-applications",
-"Author": "Martin Kleppmann",
-"Delivery": "Shipped"
+"Valid for": "30 days",
+"Delivery": "Shipped",
+"Per day": "1.97 SGD"
 },
 "in_stock": true,
-"short_description": "The big ideas behind reliable, scalable systems. By Martin Kleppmann.",
+"short_description": "The big ideas behind reliable, scalable systems.",
 "options": {},
 "option_values": {}
 },
@@ -335,6 +315,7 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
@@ -353,11 +334,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/the-psychology-of-money",
-"Author": "Morgan Housel",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Timeless lessons on wealth, greed and happiness. By Morgan Housel.",
+"short_description": "Timeless lessons on wealth, greed and happiness.",
 "options": {},
 "option_values": {}
 },
@@ -366,40 +347,13 @@
 "Retail and Gifts"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge",
 "retail"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234717278398"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061067129022",
-"title": "iKnowledge Canvas Tote Bag",
-"price": 18.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/3vr4ry.jpg?v=1791300773",
-"category": "Retail and Gifts",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/iknowledge-canvas-tote-bag",
-"Delivery": "Shipped"
-},
-"in_stock": true,
-"short_description": "Heavy cotton tote with the iKnowledge logo.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Retail and Gifts"
-],
-"tags": [
-"global",
-"iknowledge",
-"retail"
-],
-"variant_id": "gid://shopify/ProductVariant/49234717409470"
 },
 {
 "product": {
@@ -412,6 +366,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/clip-on-led-reading-lamp",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -424,6 +379,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -440,6 +396,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/leather-bookmark-set-3",
+"Valid for": "30 days",
 "Pack": "3 pieces",
 "Delivery": "Shipped"
 },
@@ -453,6 +410,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -464,11 +422,12 @@
 "title": "Bookworm Ceramic Mug",
 "price": 16.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/9alxfj.png?v=1791291779",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/ByjGUMYC.jpg?v=1791303092",
 "category": "Retail and Gifts",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/bookworm-ceramic-mug",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -481,6 +440,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -497,6 +457,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/iknowledge-hardcover-notebook",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -509,6 +470,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -525,6 +487,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/cotton-reading-socks",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -537,6 +500,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -553,6 +517,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/linen-book-sleeve",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -565,6 +530,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -581,6 +547,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/desk-organiser-set",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -593,6 +560,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -609,6 +577,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/gel-pen-set-12",
+"Valid for": "30 days",
 "Pack": "12 pieces",
 "Delivery": "Shipped"
 },
@@ -622,6 +591,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -638,6 +608,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/wooden-bookends-pair",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -650,6 +621,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -667,9 +639,9 @@
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/singapore-city-pass-2-day",
 "Valid for": "2 days",
+"Duration": "24 hours",
 "Includes": "transit credit, attractions",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before",
 "Per day": "44.50 SGD"
 },
@@ -682,6 +654,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -699,11 +672,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/tokyo-hotel-voucher-2-nights",
+"Valid for": "7 days",
 "Nights": "2",
 "Hotel": "3-star",
+"Includes": "breakfast",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
-"Date changes": "free up to 24 h before",
 "Per night": "160.00 SGD"
 },
 "in_stock": true,
@@ -716,6 +689,7 @@
 ],
 "tags": [
 "global",
+"hotel",
 "iknowledge",
 "travel"
 ],
@@ -732,8 +706,8 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/airport-lounge-day-pass",
+"Duration": "24 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -745,6 +719,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -762,6 +737,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/universal-travel-adapter",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -774,6 +750,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -785,16 +762,16 @@
 "title": "Bangkok Hotel Voucher - 3 Nights",
 "price": 360.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/g3hhkh.png?v=1791291784",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/bOKAlNEM.jpg?v=1791303093",
 "category": "Travel",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/bangkok-hotel-voucher-3-nights",
+"Valid for": "7 days",
 "Nights": "3",
 "Hotel": "4-star",
+"Includes": "breakfast",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
-"Date changes": "free up to 24 h before",
 "Per night": "120.00 SGD"
 },
 "in_stock": true,
@@ -807,6 +784,7 @@
 ],
 "tags": [
 "global",
+"hotel",
 "iknowledge",
 "travel"
 ],
@@ -823,10 +801,10 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/bali-villa-stay-2-nights",
+"Valid for": "7 days",
 "Nights": "2",
+"Includes": "breakfast",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
-"Date changes": "free up to 24 h before",
 "Per night": "240.00 SGD"
 },
 "in_stock": true,
@@ -839,6 +817,7 @@
 ],
 "tags": [
 "global",
+"hotel",
 "iknowledge",
 "travel"
 ],
@@ -855,10 +834,10 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/seoul-hotel-voucher-2-nights",
+"Valid for": "7 days",
 "Nights": "2",
+"Includes": "breakfast",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
-"Date changes": "free up to 24 h before",
 "Per night": "155.00 SGD"
 },
 "in_stock": true,
@@ -871,6 +850,7 @@
 ],
 "tags": [
 "global",
+"hotel",
 "iknowledge",
 "travel"
 ],
@@ -887,9 +867,8 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/kuala-lumpur-city-tour",
-"Duration": "Half day",
+"Duration": "24 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -901,6 +880,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -919,8 +899,8 @@
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/universal-studios-singapore-ticket",
 "Valid for": "1 day",
+"Duration": "24 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -932,6 +912,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -950,8 +931,8 @@
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/disneyland-hong-kong-ticket",
 "Valid for": "1 day",
+"Duration": "24 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -963,6 +944,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -980,14 +962,13 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/mt-fuji-day-trip-from-tokyo",
-"Duration": "Full day",
+"Duration": "24 hours",
 "Includes": "lunch",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
-"short_description": "Guided coach tour with lunch.",
+"short_description": "Guided coach tour with lunch. Product details E-ticket or booking voucher sent by email Show the QR code on your phone at entry Flexible dates: free changes up to 24 hours before where the operator al",
 "options": {},
 "option_values": {}
 },
@@ -995,11 +976,43 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234719047870"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9061068210366",
+"title": "Airport Transfer - Singapore",
+"price": 48.0,
+"currency": "SGD",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/5udqrm.jpg?v=1791300780",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/airport-transfer-singapore",
+"Duration": "24 hours",
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
+},
+"in_stock": true,
+"short_description": "Private car, up to 3 passengers.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"experience",
+"global",
+"iknowledge",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49234719080638"
 },
 {
 "product": {
@@ -1014,8 +1027,6 @@
 "product_url": "https://iknowledge-dev.myshopify.com/products/travel-insurance-7-days-asia",
 "Valid for": "7 days",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
-"Date changes": "free up to 24 h before",
 "Per day": "2.71 SGD"
 },
 "in_stock": true,
@@ -1029,6 +1040,7 @@
 "tags": [
 "global",
 "iknowledge",
+"insurance",
 "travel"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234719113406"
@@ -1044,6 +1056,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/packing-cubes-set-4",
+"Valid for": "30 days",
 "Pack": "4 pieces",
 "Delivery": "Shipped"
 },
@@ -1057,6 +1070,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -1073,6 +1087,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/neck-travel-pillow",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -1085,6 +1100,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -1101,6 +1117,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/carry-on-spinner-suitcase-20in",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -1113,6 +1130,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -1129,6 +1147,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/luggage-scale",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -1141,6 +1160,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -1157,6 +1177,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/passport-holder-rfid",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -1169,6 +1190,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -1180,14 +1202,13 @@
 "title": "Sydney Harbour Cruise",
 "price": 52.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/q0skqi.png?v=1791291792",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/EtWYmFXp.jpg?v=1791303093",
 "category": "Travel",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/sydney-harbour-cruise",
 "Duration": "2 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -1199,6 +1220,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -1218,7 +1240,6 @@
 "product_url": "https://iknowledge-dev.myshopify.com/products/hanoi-street-food-walking-tour",
 "Duration": "3 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -1230,6 +1251,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -1247,9 +1269,8 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/phuket-island-hopping-tour",
-"Duration": "Full day",
+"Duration": "24 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -1261,6 +1282,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -1278,9 +1300,8 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/taipei-night-market-tour",
-"Duration": "Evening",
+"Duration": "24 hours",
 "Delivery": "Digital, by email",
-"Free cancellation": "up to 48 h before",
 "Date changes": "free up to 24 h before"
 },
 "in_stock": true,
@@ -1292,6 +1313,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -1304,7 +1326,7 @@
 "title": "Japan eSIM - 7 Days 10GB",
 "price": 19.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/9h6rm5.png?v=1791291794",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/XmhixYBw.jpg?v=1791303093",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1325,6 +1347,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -1333,44 +1356,11 @@
 },
 {
 "product": {
-"product_id": "gid://shopify/Product/9061068669118",
-"title": "Asia Regional eSIM - 15 Days 20GB",
-"price": 34.9,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/161ggw.png?v=1791291794",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/asia-regional-esim-15-days-20gb",
-"Coverage": "Asia Regional",
-"Type": "eSIM (QR code by email)",
-"Data": "20 GB",
-"Valid for": "15 days",
-"Delivery": "Digital, by email",
-"Per day": "2.33 SGD"
-},
-"in_stock": true,
-"short_description": "Covers 12 Asian countries.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234719572158"
-},
-{
-"product": {
 "product_id": "gid://shopify/Product/9061068701886",
 "title": "Singapore Prepaid SIM - 30 Days",
 "price": 18.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/20fb88.png?v=1791291795",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/fdnPcMQm.jpg?v=1791303094",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1392,6 +1382,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -1404,7 +1395,7 @@
 "title": "Mobile Top-Up Credit $20",
 "price": 20.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/t7i2qc.png?v=1791291795",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/FQbtlQsm.jpg?v=1791303095",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1422,7 +1413,8 @@
 "tags": [
 "global",
 "iknowledge",
-"telecom"
+"telecom",
+"topup"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234719637694"
 },
@@ -1432,7 +1424,7 @@
 "title": "Korea eSIM - 5 Days 5GB",
 "price": 12.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/cas2e3.png?v=1791291796",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/MsPkFUdH.jpg?v=1791303095",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1453,6 +1445,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -1486,6 +1479,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -1498,7 +1492,7 @@
 "title": "Europe eSIM - 15 Days 20GB",
 "price": 39.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/nc59dd.png?v=1791291796",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/BRKQFRWs.jpg?v=1791303097",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1519,6 +1513,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -1531,7 +1526,7 @@
 "title": "USA eSIM - 10 Days 10GB",
 "price": 24.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/jltf6b.png?v=1791291797",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/YaEeJmDU.jpg?v=1791303096",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1552,6 +1547,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -1564,7 +1560,7 @@
 "title": "Global eSIM - 30 Days 10GB",
 "price": 59.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/9kpfri.png?v=1791291797",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/AaeoEABO.jpg?v=1791303096",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1585,6 +1581,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -1593,247 +1590,11 @@
 },
 {
 "product": {
-"product_id": "gid://shopify/Product/9061069029566",
-"title": "Malaysia Prepaid SIM - 7 Days",
-"price": 9.9,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/s4l3sf.png?v=1791291798",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/malaysia-prepaid-sim-7-days",
-"Coverage": "Malaysia",
-"Type": "Physical SIM",
-"Data": "20 GB",
-"Valid for": "7 days",
-"Delivery": "Digital, by email",
-"Per day": "1.41 SGD"
-},
-"in_stock": true,
-"short_description": "Physical SIM, 20GB.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234719932606"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061069062334",
-"title": "Mobile Top-Up Credit $10",
-"price": 10.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/6j9du8.png?v=1791291798",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/mobile-top-up-credit-10",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "Digital airtime credit.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234719965374"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061069127870",
-"title": "Mobile Top-Up Credit $50",
-"price": 50.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/hxb9k7.png?v=1791291798",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/mobile-top-up-credit-50",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "Digital airtime credit.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234719998142"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061069652158",
-"title": "Postpaid Plan Starter 30GB (demo)",
-"price": 25.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/u1n8oe.png?v=1791291799",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/postpaid-plan-starter-30gb-demo",
-"Data": "30 GB",
-"Billing": "Monthly",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "Monthly plan listing, demo only.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234720489662"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061069783230",
-"title": "Postpaid Plan Plus 100GB (demo)",
-"price": 39.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/ev2ooq.png?v=1791291799",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/postpaid-plan-plus-100gb-demo",
-"Data": "100 GB",
-"Billing": "Monthly",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "Monthly plan listing, demo only.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234720686270"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061069848766",
-"title": "Home Fibre 1Gbps (demo)",
-"price": 39.9,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/3bj2d9.png?v=1791291799",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/home-fibre-1gbps-demo",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "Broadband plan listing, demo only.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234720751806"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061070012606",
-"title": "Pocket WiFi Rental - 7 Days",
-"price": 42.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/j4ois6.png?v=1791291800",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/pocket-wifi-rental-7-days",
-"Valid for": "7 days",
-"Delivery": "Shipped"
-},
-"in_stock": true,
-"short_description": "Portable hotspot, collect at airport.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234720915646"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061070078142",
-"title": "Roaming Data Pass - 1 Day",
-"price": 8.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/molwmi.png?v=1791291800",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/roaming-data-pass-1-day",
-"Data": "2 GB",
-"Valid for": "1 day",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "Add-on, 2GB per day.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234720948414"
-},
-{
-"product": {
 "product_id": "gid://shopify/Product/9061070209214",
 "title": "Roaming Data Pass - 7 Days",
 "price": 30.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/0t85k2.png?v=1791291800",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/EpJRpcNL.jpg?v=1791303101",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -1852,6 +1613,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"data",
 "global",
 "iknowledge",
 "telecom"
@@ -1860,45 +1622,18 @@
 },
 {
 "product": {
-"product_id": "gid://shopify/Product/9061070373054",
-"title": "International Calling Card",
-"price": 15.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/91xvo4.png?v=1791291801",
-"category": "Telecom and eSIM",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/international-calling-card",
-"Calls": "60 minutes",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "60 minutes to 50 countries.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Telecom and eSIM"
-],
-"tags": [
-"global",
-"iknowledge",
-"telecom"
-],
-"variant_id": "gid://shopify/ProductVariant/49234721276094"
-},
-{
-"product": {
 "product_id": "gid://shopify/Product/9061070569662",
 "title": "Dual-SIM Phone Case Adapter",
 "price": 9.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/bcpbh1.png?v=1791291801",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/NUdmcewL.jpg?v=1791303101",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/dual-sim-phone-case-adapter",
-"Delivery": "Shipped"
+"Valid for": "30 days",
+"Delivery": "Shipped",
+"Per day": "0.30 SGD"
 },
 "in_stock": true,
 "short_description": "SIM adapter kit.",
@@ -1910,6 +1645,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "telecom"
 ],
@@ -1921,11 +1657,12 @@
 "title": "USB-C Fast Charger 30W",
 "price": 19.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/7wrq6o.png?v=1791291802",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/wrUSsOuR.jpg?v=1791303102",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/usb-c-fast-charger-30w",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -1938,6 +1675,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "telecom"
 ],
@@ -1949,11 +1687,12 @@
 "title": "Wireless Earbuds",
 "price": 49.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/6qwedu.png?v=1791291802",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/YJWNvWZM.jpg?v=1791303102",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/wireless-earbuds",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -1966,6 +1705,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "telecom"
 ],
@@ -1977,12 +1717,13 @@
 "title": "Cinema Tickets (2 Standard)",
 "price": 22.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/z76ivv.png?v=1791291803",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/pKybHexb.jpg?v=1791303103",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/cinema-tickets-2-standard",
 "Valid for": "60 days",
+"Duration": "24 hours",
 "Pack": "2 tickets",
 "Delivery": "Digital, by email"
 },
@@ -1996,6 +1737,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -2007,7 +1749,7 @@
 "title": "Music Streaming Gift Card - 3 Months",
 "price": 29.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/9jvvq1.png?v=1791291803",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/eOAQEerb.jpg?v=1791303104",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
@@ -2025,6 +1767,7 @@
 ],
 "tags": [
 "entertainment",
+"giftcard",
 "global",
 "iknowledge"
 ],
@@ -2036,11 +1779,12 @@
 "title": "Settlers of Catan Board Game",
 "price": 64.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/9u376h.png?v=1791291803",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/neDesETw.jpg?v=1791303104",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/settlers-of-catan-board-game",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2054,6 +1798,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722029758"
@@ -2064,7 +1809,7 @@
 "title": "Live Concert Voucher $100",
 "price": 100.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/k9ms5w.png?v=1791291804",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/rKaJVujh.jpg?v=1791303104",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
@@ -2081,6 +1826,7 @@
 ],
 "tags": [
 "entertainment",
+"giftcard",
 "global",
 "iknowledge"
 ],
@@ -2092,7 +1838,7 @@
 "title": "Video Streaming Gift Card - 3 Months",
 "price": 36.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/0uspqw.png?v=1791291804",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/FCnbJrBh.jpg?v=1791303105",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
@@ -2110,6 +1856,7 @@
 ],
 "tags": [
 "entertainment",
+"giftcard",
 "global",
 "iknowledge"
 ],
@@ -2138,6 +1885,7 @@
 ],
 "tags": [
 "entertainment",
+"giftcard",
 "global",
 "iknowledge"
 ],
@@ -2149,7 +1897,7 @@
 "title": "PC Game Key Bundle (demo)",
 "price": 29.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/c4i2c5.png?v=1791291805",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/hSMWicfk.jpg?v=1791303105",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
@@ -2166,6 +1914,7 @@
 ],
 "tags": [
 "entertainment",
+"giftcard",
 "global",
 "iknowledge"
 ],
@@ -2182,6 +1931,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/cinema-tickets-premium-2",
+"Duration": "24 hours",
 "Pack": "2 tickets",
 "Delivery": "Digital, by email"
 },
@@ -2195,6 +1945,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -2206,11 +1957,12 @@
 "title": "Comedy Night Tickets (2)",
 "price": 68.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/n3525j.png?v=1791291806",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/SjhHjRXt.jpg?v=1791303106",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/comedy-night-tickets-2",
+"Duration": "24 hours",
 "Pack": "2 tickets",
 "Delivery": "Digital, by email"
 },
@@ -2224,6 +1976,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -2231,18 +1984,50 @@
 },
 {
 "product": {
+"product_id": "gid://shopify/Product/9061071585470",
+"title": "Theatre Musical Ticket",
+"price": 95.0,
+"currency": "SGD",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/JTJMlpfE.jpg?v=1791303106",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/theatre-musical-ticket",
+"Duration": "24 hours",
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
+},
+"in_stock": true,
+"short_description": "Stalls seat, weekend show.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"experience",
+"global",
+"iknowledge"
+],
+"variant_id": "gid://shopify/ProductVariant/49234722554046"
+},
+{
+"product": {
 "product_id": "gid://shopify/Product/9061071618238",
 "title": "Escape Room for 4",
 "price": 88.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/r17ioi.png?v=1791291806",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/vblmiCfM.jpg?v=1791303107",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/escape-room-for-4",
-"Duration": "60 minutes",
+"Duration": "24 hours",
 "Group size": "4 people",
-"Delivery": "Digital, by email"
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
 },
 "in_stock": true,
 "short_description": "60-minute team escape room.",
@@ -2254,6 +2039,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -2265,11 +2051,12 @@
 "title": "Bowling Night for 4",
 "price": 60.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/qoitx9.png?v=1791291807",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/vgAoXcLO.jpg?v=1791303108",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/bowling-night-for-4",
+"Duration": "24 hours",
 "Includes": "shoe rental",
 "Group size": "4 people",
 "Delivery": "Digital, by email"
@@ -2284,6 +2071,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -2295,14 +2083,15 @@
 "title": "Karaoke Room 3 Hours",
 "price": 72.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/vuoxbg.png?v=1791291807",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/gKrEaetm.jpg?v=1791303107",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/karaoke-room-3-hours",
 "Duration": "3 hours",
 "Group size": "up to 8 people",
-"Delivery": "Digital, by email"
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
 },
 "in_stock": true,
 "short_description": "Private room, up to 8 people.",
@@ -2314,6 +2103,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -2325,11 +2115,12 @@
 "title": "Jigsaw Puzzle 1000 pc",
 "price": 24.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/9kivcc.png?v=1791291807",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/KEuaKcQj.jpg?v=1791303108",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/jigsaw-puzzle-1000-pc",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2343,6 +2134,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722685118"
@@ -2358,6 +2150,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/playing-cards-deluxe",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2371,6 +2164,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722717886"
@@ -2386,6 +2180,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/uno-card-game",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2399,6 +2194,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722750654"
@@ -2414,10 +2210,11 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/chess-set-wooden",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
-"short_description": "Folding board with pieces.",
+"short_description": "Folding board with pieces. Product details Quality checked before dispatch Ready to use or give as a gift 12-month limited warranty where applicable Tracked delivery with order updates Delivery: Order",
 "options": {},
 "option_values": {}
 },
@@ -2427,6 +2224,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722783422"
@@ -2442,6 +2240,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/vinyl-record-player",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2455,6 +2254,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722816190"
@@ -2470,6 +2270,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/bluetooth-speaker",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2483,6 +2284,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722848958"
@@ -2498,6 +2300,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/podcast-mic-usb",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2511,6 +2314,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722881726"
@@ -2526,7 +2330,9 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/museum-pass-family-4",
-"Delivery": "Digital, by email"
+"Duration": "24 hours",
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
 },
 "in_stock": true,
 "short_description": "Entry to national museums.",
@@ -2538,6 +2344,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -2554,6 +2361,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/kids-science-kit",
+"Valid for": "30 days",
 "Ages": "8+",
 "Delivery": "Shipped"
 },
@@ -2568,6 +2376,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49234722947262"
@@ -2583,6 +2392,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/iknowledge-logo-tee",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2609,79 +2419,19 @@
 },
 {
 "product": {
-"product_id": "gid://shopify/Product/9061401821374",
-"title": "Osaka Hotel Voucher - 2 Nights",
-"price": 295.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/inpjbv.jpg?v=1791300785",
-"category": "Travel",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/osaka-hotel-voucher-2-nights",
-"Nights": "2",
-"Includes": "breakfast",
-"Delivery": "Digital, by email",
-"Per night": "147.50 SGD"
-},
-"in_stock": true,
-"short_description": "Two nights in a central Osaka hotel with breakfast, valid for 12 months.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Travel"
-],
-"tags": [
-"global",
-"iknowledge",
-"travel"
-],
-"variant_id": "gid://shopify/ProductVariant/49235547750590"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061401854142",
-"title": "Hong Kong Harbour Night Cruise",
-"price": 64.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/gx9j7i.jpg?v=1791300785",
-"category": "Travel",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/hong-kong-harbour-night-cruise",
-"Duration": "Evening",
-"Includes": "welcome drink, skyline views",
-"Delivery": "Digital, by email"
-},
-"in_stock": true,
-"short_description": "Evening cruise across Victoria Harbour with skyline views and a welcome drink.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Travel"
-],
-"tags": [
-"global",
-"iknowledge",
-"travel"
-],
-"variant_id": "gid://shopify/ProductVariant/49235547783358"
-},
-{
-"product": {
 "product_id": "gid://shopify/Product/9061401952446",
 "title": "Bali Snorkel and Beach Day Trip",
 "price": 89.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/rbt8rx.png?v=1791291812",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/MOXdCLwz.jpg?v=1791303109",
 "category": "Travel",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/bali-snorkel-and-beach-day-trip",
-"Duration": "Full day",
+"Duration": "24 hours",
 "Includes": "lunch, hotel pickup, snorkel gear",
-"Delivery": "Digital, by email"
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
 },
 "in_stock": true,
 "short_description": "Full-day boat trip with snorkel gear, lunch and hotel pickup in south Bali.",
@@ -2692,6 +2442,7 @@
 "Travel"
 ],
 "tags": [
+"experience",
 "global",
 "iknowledge",
 "travel"
@@ -2709,6 +2460,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/compression-packing-bags-6",
+"Valid for": "30 days",
 "Pack": "6 pieces",
 "Delivery": "Shipped"
 },
@@ -2722,6 +2474,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -2733,20 +2486,19 @@
 "title": "Foldable Travel Backpack 25L",
 "price": 39.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/ogc1ra.png?v=1791291813",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/NuGlszUO.jpg?v=1791303110",
 "category": "Travel",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/foldable-travel-backpack-25l",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
 "short_description": "Light packable backpack that folds into its own pouch.",
 "options": {
 "Colour": [
-"Navy",
-"Black",
-"Teal"
+"Navy"
 ]
 },
 "option_values": {}
@@ -2756,6 +2508,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "travel"
 ],
@@ -2763,40 +2516,11 @@
 },
 {
 "product": {
-"product_id": "gid://shopify/Product/9061402083518",
-"title": "Cabin Luggage Tag Set (2)",
-"price": 8.5,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/iodpfx.png?v=1791291813",
-"category": "Travel",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/cabin-luggage-tag-set-2",
-"Pack": "2 pieces",
-"Delivery": "Shipped"
-},
-"in_stock": true,
-"short_description": "Two durable luggage tags with privacy flap.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Travel"
-],
-"tags": [
-"global",
-"iknowledge",
-"travel"
-],
-"variant_id": "gid://shopify/ProductVariant/49235548078270"
-},
-{
-"product": {
 "product_id": "gid://shopify/Product/9061402149054",
 "title": "Vietnam eSIM - 10 Days 10GB",
 "price": 14.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/dvtknx.png?v=1791291814",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/LTtTNDQm.jpg?v=1791303110",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -2817,6 +2541,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -2829,7 +2554,7 @@
 "title": "Australia eSIM - 14 Days 20GB",
 "price": 32.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/eqowve.png?v=1791291814",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/pPJbKYGd.jpg?v=1791303111",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -2850,6 +2575,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -2862,7 +2588,7 @@
 "title": "Taiwan eSIM - 7 Days 5GB",
 "price": 11.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/1wxja0.png?v=1791291815",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/EKyMYfjR.jpg?v=1791303111",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
@@ -2883,6 +2609,7 @@
 "Telecom and eSIM"
 ],
 "tags": [
+"esim",
 "global",
 "iknowledge",
 "telecom"
@@ -2895,19 +2622,19 @@
 "title": "Power Bank 10,000mAh",
 "price": 29.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/5mero3.png?v=1791291815",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/wFgOKbor.jpg?v=1791303112",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/power-bank-10-000mah",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
 "short_description": "Slim power bank with USB-C and USB-A ports.",
 "options": {
 "Colour": [
-"Black",
-"White"
+"Black"
 ]
 },
 "option_values": {}
@@ -2917,6 +2644,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "telecom"
 ],
@@ -2928,11 +2656,12 @@
 "title": "Phone Tripod with Remote",
 "price": 16.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/xbs4vg.png?v=1791291815",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/dvJAygrk.jpg?v=1791303112",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/phone-tripod-with-remote",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -2945,6 +2674,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "telecom"
 ],
@@ -2956,12 +2686,14 @@
 "title": "SIM Ejector and Case Kit",
 "price": 5.9,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/bsd9ep.png?v=1791291816",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/SbUttCpn.jpg?v=1791303113",
 "category": "Telecom and eSIM",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/sim-ejector-and-case-kit",
-"Delivery": "Shipped"
+"Valid for": "30 days",
+"Delivery": "Shipped",
+"Per day": "0.20 SGD"
 },
 "in_stock": true,
 "short_description": "Pocket case with SIM ejector pins and six nano SIM slots.",
@@ -2973,6 +2705,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "telecom"
 ],
@@ -2989,6 +2722,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/mini-golf-round-for-4",
+"Duration": "24 hours",
 "Group size": "4 people",
 "Delivery": "Digital, by email"
 },
@@ -3002,6 +2736,7 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
@@ -3013,12 +2748,14 @@
 "title": "Aquarium Day Ticket",
 "price": 32.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/x0c2kd.png?v=1791291817",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/kJjamLmd.jpg?v=1791303113",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/aquarium-day-ticket",
-"Delivery": "Digital, by email"
+"Duration": "24 hours",
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
 },
 "in_stock": true,
 "short_description": "Single-day entry to a major city aquarium.",
@@ -3030,40 +2767,11 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49235548504254"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061402509502",
-"title": "Strategy Board Game: Ticket to Ride",
-"price": 69.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/2smohc.png?v=1791291817",
-"category": "Entertainment and Games",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/strategy-board-game-ticket-to-ride",
-"Players": "2-5",
-"Ages": "8+",
-"Delivery": "Shipped"
-},
-"in_stock": true,
-"short_description": "Classic railway board game for 2 to 5 players, ages 8 and up.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Entertainment and Games"
-],
-"tags": [
-"entertainment",
-"global",
-"iknowledge"
-],
-"variant_id": "gid://shopify/ProductVariant/49235548537022"
 },
 {
 "product": {
@@ -3076,6 +2784,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/acoustic-ukulele-starter-kit",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -3094,6 +2803,7 @@
 "tags": [
 "entertainment",
 "global",
+"goods",
 "iknowledge"
 ],
 "variant_id": null
@@ -3104,13 +2814,14 @@
 "title": "Live Stand-Up Comedy Show Pass",
 "price": 42.0,
 "currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/2m3zwb.png?v=1791291817",
+"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/htnOaOdx.jpg?v=1791303114",
 "category": "Entertainment and Games",
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/live-stand-up-comedy-show-pass",
-"Duration": "Evening",
-"Delivery": "Digital, by email"
+"Duration": "24 hours",
+"Delivery": "Digital, by email",
+"Date changes": "free up to 24 h before"
 },
 "in_stock": true,
 "short_description": "Entry to a weekend stand-up comedy night.",
@@ -3122,38 +2833,11 @@
 ],
 "tags": [
 "entertainment",
+"experience",
 "global",
 "iknowledge"
 ],
 "variant_id": "gid://shopify/ProductVariant/49235548668094"
-},
-{
-"product": {
-"product_id": "gid://shopify/Product/9061402640574",
-"title": "Portable Karaoke Microphone",
-"price": 35.0,
-"currency": "SGD",
-"image_url": "https://cdn.shopify.com/s/files/1/0792/0880/8638/files/pz0013.png?v=1791291818",
-"category": "Entertainment and Games",
-"labels": [],
-"attributes": {
-"product_url": "https://iknowledge-dev.myshopify.com/products/portable-karaoke-microphone",
-"Delivery": "Shipped"
-},
-"in_stock": true,
-"short_description": "Bluetooth microphone with built-in speaker and LED lights.",
-"options": {},
-"option_values": {}
-},
-"collections": [
-"Entertainment and Games"
-],
-"tags": [
-"entertainment",
-"global",
-"iknowledge"
-],
-"variant_id": "gid://shopify/ProductVariant/49235548700862"
 },
 {
 "product": {
@@ -3166,6 +2850,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/sapiens",
+"Valid for": "30 days",
 "Author": "Yuval Noah Harari",
 "Delivery": "Shipped"
 },
@@ -3178,6 +2863,7 @@
 "Books"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge"
@@ -3195,6 +2881,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/the-alchemist",
+"Valid for": "30 days",
 "Author": "Paulo Coelho",
 "Delivery": "Shipped"
 },
@@ -3207,6 +2894,7 @@
 "Books"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge"
@@ -3224,6 +2912,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/educated",
+"Valid for": "30 days",
 "Author": "Tara Westover",
 "Delivery": "Shipped"
 },
@@ -3236,6 +2925,7 @@
 "Books"
 ],
 "tags": [
+"book",
 "books",
 "global",
 "iknowledge"
@@ -3253,6 +2943,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/iknowledge-hoodie",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -3271,6 +2962,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -3287,6 +2979,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/insulated-water-bottle-500ml",
+"Valid for": "30 days",
 "Duration": "24 hours",
 "Delivery": "Shipped"
 },
@@ -3305,6 +2998,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -3321,6 +3015,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/a5-dotted-journal",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -3339,6 +3034,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -3355,6 +3051,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/book-light-rechargeable",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -3367,6 +3064,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -3383,6 +3081,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/enamel-pin-set-4",
+"Valid for": "30 days",
 "Pack": "4 pieces",
 "Delivery": "Shipped"
 },
@@ -3396,6 +3095,7 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
@@ -3412,6 +3112,7 @@
 "labels": [],
 "attributes": {
 "product_url": "https://iknowledge-dev.myshopify.com/products/reusable-shopping-bag",
+"Valid for": "30 days",
 "Delivery": "Shipped"
 },
 "in_stock": true,
@@ -3429,10 +3130,1804 @@
 ],
 "tags": [
 "global",
+"goods",
 "iknowledge",
 "retail"
 ],
 "variant_id": null
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062247465150",
+"title": "Phone Case Clear Slim (iPhone and Android)",
+"price": 14.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/phone-case-clear-slim-iphone-and-android",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Slim clear protective phone case with raised edges for camera and screen protection. Available for common iPhone and Android models.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"accessories",
+"phone case",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237111963838"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062247596222",
+"title": "Over-Ear Noise Cancelling Headphones",
+"price": 129.0,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/over-ear-noise-cancelling-headphones",
+"Duration": "30 hours",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Wireless over-ear headphones with active noise cancelling, 30 hours of playback and a foldable travel case. Ideal for flights.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"audio",
+"headphones",
+"noise cancelling",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237113667774"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062247661758",
+"title": "In-Ear Wired Earphones with Mic",
+"price": 12.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/in-ear-wired-earphones-with-mic",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Comfortable wired earphones with in-line microphone and remote for calls. 3.5mm plug.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"audio",
+"earphones",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237115470014"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062247727294",
+"title": "USB-C to USB-C Cable 1m",
+"price": 9.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/usb-c-to-usb-c-cable-1m",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Braided USB-C to USB-C cable supporting fast charging up to 60W and data transfer.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"cable",
+"charging",
+"telecom",
+"usb-c"
+],
+"variant_id": "gid://shopify/ProductVariant/49237115863230"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062247825598",
+"title": "Lightning to USB-C Cable 1m",
+"price": 14.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/lightning-to-usb-c-cable-1m",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Charge and sync your iPhone with this 1 metre Lightning to USB-C cable.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"cable",
+"charging",
+"iphone",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237116616894"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062247923902",
+"title": "Wireless Charging Pad 15W",
+"price": 24.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/wireless-charging-pad-15w",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Slim 15W Qi wireless charging pad for phones and earbuds, with non-slip surface.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"charging",
+"telecom",
+"wireless charger"
+],
+"variant_id": "gid://shopify/ProductVariant/49237117501630"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062247989438",
+"title": "Phone Stand Adjustable Aluminium",
+"price": 15.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/phone-stand-adjustable-aluminium",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Foldable aluminium stand that holds phones and small tablets at an adjustable angle.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"desk",
+"phone stand",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237118189758"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248054974",
+"title": "Smartwatch Fitness Tracker",
+"price": 89.0,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/smartwatch-fitness-tracker",
+"Valid for": "7 days",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Lightweight fitness smartwatch with heart-rate tracking, sleep tracking, step counter and 7-day battery.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"fitness",
+"smartwatch",
+"telecom",
+"wearable"
+],
+"variant_id": "gid://shopify/ProductVariant/49237118615742"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248087742",
+"title": "E-Reader 6in with Backlight",
+"price": 159.0,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/e-reader-6in-with-backlight",
+"Data": "16 GB",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Glare-free 6 inch e-reader with adjustable warm backlight and weeks of battery life. Holds thousands of books.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books",
+"Retail and Gifts"
+],
+"tags": [
+"books",
+"e-reader",
+"gadgets",
+"retail"
+],
+"variant_id": "gid://shopify/ProductVariant/49237118648510"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248153278",
+"title": "Laptop Sleeve 14in",
+"price": 29.9,
+"currency": "SGD",
+"category": "Retail and Gifts",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/laptop-sleeve-14in",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Padded water-resistant sleeve that fits 13 to 14 inch laptops, with a front pocket for a charger.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Retail and Gifts"
+],
+"tags": [
+"accessories",
+"laptop bag",
+"retail",
+"sleeve"
+],
+"variant_id": "gid://shopify/ProductVariant/49237119369406"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248218814",
+"title": "Laptop Backpack 15.6in",
+"price": 59.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/laptop-backpack-15-6in",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Everyday backpack with padded laptop compartment, USB charging port and hidden anti-theft pocket.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"backpack",
+"bags",
+"laptop bag",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237120057534"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248284350",
+"title": "TSA Combination Luggage Lock (2)",
+"price": 11.9,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/tsa-combination-luggage-lock-2",
+"Pack": "2 pieces",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Set of two 3-digit TSA-approved combination locks so border officers can inspect your bag without cutting the lock.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"luggage lock",
+"security",
+"travel",
+"tsa"
+],
+"variant_id": "gid://shopify/ProductVariant/49237120778430"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248349886",
+"title": "Compact Travel Umbrella",
+"price": 16.9,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/compact-travel-umbrella",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Windproof folding umbrella that fits in your daypack, with auto open and close.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"rain",
+"travel",
+"umbrella"
+],
+"variant_id": "gid://shopify/ProductVariant/49237120811198"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248382654",
+"title": "Travel Toiletry Kit (TSA Size)",
+"price": 18.9,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/travel-toiletry-kit-tsa-size",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Clear toiletry bag with five leak-proof refillable bottles, all within carry-on liquid limits.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"bottles",
+"toiletries",
+"travel",
+"tsa"
+],
+"variant_id": "gid://shopify/ProductVariant/49237121761470"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248448190",
+"title": "Reef-Safe Sunscreen SPF50 100ml",
+"price": 15.9,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/reef-safe-sunscreen-spf50-100ml",
+"Duration": "80 minutes",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Broad-spectrum SPF50 sunscreen made without oxybenzone, water resistant for 80 minutes.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"beach",
+"spf50",
+"sunscreen",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237122285758"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248513726",
+"title": "Polarised Sunglasses UV400",
+"price": 34.9,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/polarised-sunglasses-uv400",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Lightweight polarised sunglasses with UV400 lenses and a hard travel case.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"sunglasses",
+"travel",
+"uv protection"
+],
+"variant_id": "gid://shopify/ProductVariant/49237122908350"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248546494",
+"title": "Quick-Dry Swim Shorts",
+"price": 29.9,
+"currency": "SGD",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/quick-dry-swim-shorts",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Quick-dry swim shorts with mesh lining and a zip pocket. Available in S to XL.",
+"options": {},
+"option_values": {}
+},
+"collections": [],
+"tags": [
+"apparel",
+"beach",
+"shorts",
+"swimwear"
+],
+"variant_id": "gid://shopify/ProductVariant/49237122941118"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248644798",
+"title": "Rechargeable Handheld Fan",
+"price": 14.9,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/rechargeable-handheld-fan",
+"Duration": "6 hours",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Compact handheld fan with three speeds and a USB-C rechargeable battery, ideal for hot, humid cities.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"cooling",
+"portable fan",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237123399870"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248906942",
+"title": "Action Camera 4K Waterproof",
+"price": 119.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/action-camera-4k-waterproof",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "4K action camera with image stabilisation, waterproof housing to 30m and mounting kit.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"4k",
+"action cam",
+"camera",
+"entertainment"
+],
+"variant_id": "gid://shopify/ProductVariant/49237124317374"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062248972478",
+"title": "Selfie Stick Bluetooth Extendable",
+"price": 14.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/selfie-stick-bluetooth-extendable",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Extendable selfie stick with detachable Bluetooth remote and tripod legs.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"phone accessories",
+"selfie stick",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237124382910"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062249038014",
+"title": "Singapore Hotel Voucher - 2 Nights",
+"price": 280.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/singapore-hotel-voucher-2-nights",
+"Valid for": "7 days",
+"Nights": "2",
+"Includes": "breakfast",
+"Delivery": "Digital, by email",
+"Per night": "140.00 SGD"
+},
+"in_stock": true,
+"short_description": "Two nights in a central Singapore hotel with breakfast for two, valid for 12 months.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"hotel",
+"singapore",
+"travel",
+"voucher"
+],
+"variant_id": "gid://shopify/ProductVariant/49237124874430"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062249463998",
+"title": "Hong Kong Hotel Voucher - 2 Nights",
+"price": 320.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/hong-kong-hotel-voucher-2-nights",
+"Valid for": "7 days",
+"Nights": "2",
+"Includes": "breakfast",
+"Delivery": "Digital, by email",
+"Per night": "160.00 SGD"
+},
+"in_stock": true,
+"short_description": "Two nights in a Kowloon hotel near the MTR with breakfast for two, valid for 12 months.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"hong kong",
+"hotel",
+"travel",
+"voucher"
+],
+"variant_id": "gid://shopify/ProductVariant/49237125038270"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062249562302",
+"title": "Sentosa Fun Pass - 3 Attractions",
+"price": 62.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/sentosa-fun-pass-3-attractions",
+"Valid for": "30 days",
+"Includes": "attractions",
+"Delivery": "Digital, by email",
+"Per day": "2.07 SGD"
+},
+"in_stock": true,
+"short_description": "Choose three attractions on Sentosa island with one e-ticket. Valid for 30 days.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"attraction tickets",
+"sentosa",
+"singapore",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237125071038"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062249595070",
+"title": "Gardens by the Bay Ticket - Flower Dome and Cloud Forest",
+"price": 32.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/gardens-by-the-bay-ticket-flower-dome-and-cloud-forest",
+"Valid for": "90 days",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Entry to both Flower Dome and Cloud Forest conservatories at Gardens by the Bay.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"attraction tickets",
+"gardens by the bay",
+"singapore",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237125791934"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062249791678",
+"title": "Singapore Zoo Ticket",
+"price": 48.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/singapore-zoo-ticket",
+"Valid for": "90 days",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "General admission to Singapore Zoo. Great for families and kids.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"attraction tickets",
+"family",
+"singapore zoo",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237126250686"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250086590",
+"title": "Singapore Cable Car Sky Pass",
+"price": 35.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/singapore-cable-car-sky-pass",
+"Valid for": "30 days",
+"Delivery": "Digital, by email",
+"Per day": "1.17 SGD"
+},
+"in_stock": true,
+"short_description": "Round trip cable car ride between Mount Faber and Sentosa with views over the harbour.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"attraction tickets",
+"cable car",
+"singapore",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237127102654"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250250430",
+"title": "Legoland Malaysia Day Ticket",
+"price": 78.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/legoland-malaysia-day-ticket",
+"Valid for": "60 days",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "One-day park ticket to Legoland Malaysia in Johor, just across the causeway from Singapore.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"attraction tickets",
+"kids",
+"legoland",
+"malaysia",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237127266494"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250479806",
+"title": "Malaysia eSIM - 7 Days 10GB",
+"price": 12.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/malaysia-esim-7-days-10gb",
+"Coverage": "Malaysia",
+"Type": "eSIM (QR code by email)",
+"Data": "10 GB",
+"Valid for": "7 days",
+"Delivery": "Digital, by email",
+"Per day": "1.84 SGD"
+},
+"in_stock": true,
+"short_description": "Prepaid Malaysia data eSIM with 10GB over 7 days. Instant QR code by email.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"data",
+"esim",
+"malaysia",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237128118462"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250676414",
+"title": "Indonesia eSIM - 10 Days 10GB",
+"price": 14.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/indonesia-esim-10-days-10gb",
+"Coverage": "Indonesia",
+"Type": "eSIM (QR code by email)",
+"Data": "10 GB",
+"Valid for": "10 days",
+"Delivery": "Digital, by email",
+"Per day": "1.49 SGD"
+},
+"in_stock": true,
+"short_description": "Prepaid Indonesia data eSIM with 10GB over 10 days, covers Bali and Jakarta.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"bali",
+"data",
+"esim",
+"indonesia",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237128839358"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250709182",
+"title": "India eSIM - 15 Days 15GB",
+"price": 16.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/india-esim-15-days-15gb",
+"Coverage": "India",
+"Type": "eSIM (QR code by email)",
+"Data": "15 GB",
+"Valid for": "15 days",
+"Delivery": "Digital, by email",
+"Per day": "1.13 SGD"
+},
+"in_stock": true,
+"short_description": "Prepaid India data eSIM with 15GB over 15 days. Instant QR code by email.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"data",
+"esim",
+"india",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237128872126"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250807486",
+"title": "Hong Kong and Macau eSIM - 7 Days 5GB",
+"price": 11.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/hong-kong-and-macau-esim-7-days-5gb",
+"Coverage": "Hong Kong and Macau",
+"Type": "eSIM (QR code by email)",
+"Data": "5 GB",
+"Valid for": "7 days",
+"Delivery": "Digital, by email",
+"Per day": "1.70 SGD"
+},
+"in_stock": true,
+"short_description": "Prepaid data eSIM for Hong Kong and Macau, 5GB over 7 days.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"data",
+"esim",
+"hong kong",
+"macau",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237129330878"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250905790",
+"title": "Philippines eSIM - 10 Days 10GB",
+"price": 13.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/philippines-esim-10-days-10gb",
+"Coverage": "Philippines",
+"Type": "eSIM (QR code by email)",
+"Data": "10 GB",
+"Valid for": "10 days",
+"Delivery": "Digital, by email",
+"Per day": "1.39 SGD"
+},
+"in_stock": true,
+"short_description": "Prepaid Philippines data eSIM with 10GB over 10 days.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"data",
+"esim",
+"philippines",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237129789630"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062250971326",
+"title": "New Zealand eSIM - 10 Days 10GB",
+"price": 19.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/new-zealand-esim-10-days-10gb",
+"Coverage": "New Zealand",
+"Type": "eSIM (QR code by email)",
+"Data": "10 GB",
+"Valid for": "10 days",
+"Delivery": "Digital, by email",
+"Per day": "1.99 SGD"
+},
+"in_stock": true,
+"short_description": "Prepaid New Zealand data eSIM with 10GB over 10 days.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"data",
+"esim",
+"new zealand",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237130346686"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251036862",
+"title": "UK eSIM - 14 Days 15GB",
+"price": 18.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/uk-esim-14-days-15gb",
+"Coverage": "UK",
+"Type": "eSIM (QR code by email)",
+"Data": "15 GB",
+"Valid for": "14 days",
+"Delivery": "Digital, by email",
+"Per day": "1.35 SGD"
+},
+"in_stock": true,
+"short_description": "Prepaid United Kingdom data eSIM with 15GB over 14 days.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"data",
+"esim",
+"telecom",
+"uk",
+"united kingdom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237130707134"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251102398",
+"title": "Steam Wallet Gift Card $20",
+"price": 20.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/steam-wallet-gift-card-20",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Digital Steam wallet code delivered by email, for games and add-ons. Redeemable on Steam.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"gaming",
+"gift card",
+"steam"
+],
+"variant_id": "gid://shopify/ProductVariant/49237131002046"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251167934",
+"title": "PlayStation Store Gift Card $30",
+"price": 30.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/playstation-store-gift-card-30",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Digital PlayStation Store credit code delivered by email.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"gaming",
+"gift card",
+"playstation"
+],
+"variant_id": "gid://shopify/ProductVariant/49237131133118"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251233470",
+"title": "Nintendo eShop Gift Card $25",
+"price": 25.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/nintendo-eshop-gift-card-25",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Digital Nintendo eShop credit code delivered by email.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"gaming",
+"gift card",
+"nintendo"
+],
+"variant_id": "gid://shopify/ProductVariant/49237132771518"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251299006",
+"title": "Xbox Gift Card $25",
+"price": 25.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/xbox-gift-card-25",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Digital Xbox credit code delivered by email for games, add-ons and Game Pass.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"gaming",
+"gift card",
+"xbox"
+],
+"variant_id": "gid://shopify/ProductVariant/49237133492414"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251364542",
+"title": "Roblox Gift Card $20",
+"price": 20.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/roblox-gift-card-20",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Digital Roblox credit code delivered by email.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"gaming",
+"gift card",
+"kids",
+"roblox"
+],
+"variant_id": "gid://shopify/ProductVariant/49237133918398"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251397310",
+"title": "Netflix Gift Card $30",
+"price": 30.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/netflix-gift-card-30",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Digital Netflix gift code delivered by email.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"gift card",
+"netflix",
+"streaming"
+],
+"variant_id": "gid://shopify/ProductVariant/49237133951166"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251462846",
+"title": "Spotify Premium Gift Card - 3 Months",
+"price": 36.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/spotify-premium-gift-card-3-months",
+"Valid for": "3 months",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Three months of Spotify Premium as a digital gift code.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"gift card",
+"music",
+"spotify"
+],
+"variant_id": "gid://shopify/ProductVariant/49237134377150"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251528382",
+"title": "LEGO Classic Creative Bricks Set",
+"price": 39.9,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/lego-classic-creative-bricks-set",
+"Ages": "4+",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Classic 790-piece creative brick set for ages 4 and up, with ideas to build animals, vehicles and more.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"kids",
+"lego",
+"toys"
+],
+"variant_id": "gid://shopify/ProductVariant/49237134442686"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251593918",
+"title": "Wooden Animal Puzzle for Kids (48 pc)",
+"price": 16.9,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/wooden-animal-puzzle-for-kids-48-pc",
+"Ages": "4+",
+"Pack": "48 pieces",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Chunky 48-piece wooden jigsaw puzzle with bright animal artwork, for ages 4 and up.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"kids",
+"puzzle",
+"toys"
+],
+"variant_id": "gid://shopify/ProductVariant/49237135065278"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251659454",
+"title": "Toy Building Blocks Starter Set (100 pc)",
+"price": 24.9,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/toy-building-blocks-starter-set-100-pc",
+"Ages": "3+",
+"Pack": "100 pieces",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "100 colourful building blocks for ages 3 and up, with a storage tub.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"5 year old",
+"entertainment",
+"kids",
+"toys"
+],
+"variant_id": "gid://shopify/ProductVariant/49237135950014"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251724990",
+"title": "The Joy of Cooking - Cookbook",
+"price": 45.0,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/the-joy-of-cooking-cookbook",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "A classic all-purpose cookbook with thousands of recipes and kitchen basics.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books"
+],
+"tags": [
+"books",
+"cookbook",
+"cooking",
+"food"
+],
+"variant_id": "gid://shopify/ProductVariant/49237136015550"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251823294",
+"title": "Salt Fat Acid Heat",
+"price": 39.0,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/salt-fat-acid-heat",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Samin Nosrat's guide to mastering the four elements of good cooking.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books"
+],
+"tags": [
+"books",
+"cookbook",
+"cooking",
+"food"
+],
+"variant_id": "gid://shopify/ProductVariant/49237136474302"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251888830",
+"title": "The Very Hungry Caterpillar",
+"price": 14.9,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/the-very-hungry-caterpillar",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Eric Carle's classic picture book for toddlers and young readers.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books"
+],
+"tags": [
+"books",
+"children",
+"kids books",
+"picture book"
+],
+"variant_id": "gid://shopify/ProductVariant/49237137490110"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062251954366",
+"title": "Charlotte's Web",
+"price": 15.9,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/charlotte-s-web",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "E. B. White's beloved story of a pig, a spider and a friendship that lasts.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books"
+],
+"tags": [
+"books",
+"children",
+"fiction",
+"kids books"
+],
+"variant_id": "gid://shopify/ProductVariant/49237137916094"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252019902",
+"title": "The Intelligent Investor",
+"price": 36.0,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/the-intelligent-investor",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Benjamin Graham's classic guide to value investing.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books"
+],
+"tags": [
+"books",
+"business",
+"finance",
+"investing"
+],
+"variant_id": "gid://shopify/ProductVariant/49237138145470"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252085438",
+"title": "A Random Walk Down Wall Street",
+"price": 34.0,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/a-random-walk-down-wall-street",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Burton Malkiel's popular guide to index investing and market behaviour.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books"
+],
+"tags": [
+"books",
+"finance",
+"investing",
+"stocks"
+],
+"variant_id": "gid://shopify/ProductVariant/49237138505918"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252183742",
+"title": "Audible Audiobook Credit - 1 Book",
+"price": 19.9,
+"currency": "SGD",
+"category": "Books",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/audible-audiobook-credit-1-book",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "One audiobook credit delivered as a digital code by email. Pick any title.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Books"
+],
+"tags": [
+"audio",
+"audiobook",
+"books",
+"gift"
+],
+"variant_id": "gid://shopify/ProductVariant/49237138604222"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252249278",
+"title": "Acoustic Guitar Beginner Pack",
+"price": 149.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/acoustic-guitar-beginner-pack",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Full-size acoustic guitar with gig bag, tuner, picks and spare strings.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"guitar",
+"instrument",
+"music"
+],
+"variant_id": "gid://shopify/ProductVariant/49237138669758"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252380350",
+"title": "Waterproof Bluetooth Speaker IPX7",
+"price": 49.9,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/waterproof-bluetooth-speaker-ipx7",
+"Duration": "12 hours",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Rugged IPX7 waterproof speaker, 12 hours of playtime, floats on water.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"audio",
+"bluetooth speaker",
+"entertainment",
+"waterproof"
+],
+"variant_id": "gid://shopify/ProductVariant/49237139718334"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252413118",
+"title": "Vinyl Record - Classic Jazz Collection",
+"price": 34.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/vinyl-record-classic-jazz-collection",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "180g vinyl pressing of classic jazz standards, in a printed sleeve.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"jazz",
+"music",
+"records",
+"vinyl"
+],
+"variant_id": "gid://shopify/ProductVariant/49237139751102"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252478654",
+"title": "Podcast Streaming Mic Kit",
+"price": 79.0,
+"currency": "SGD",
+"category": "Entertainment and Games",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/podcast-streaming-mic-kit",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "USB condenser microphone kit with boom arm and pop filter for streaming and recording.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Entertainment and Games"
+],
+"tags": [
+"entertainment",
+"microphone",
+"podcast",
+"streaming"
+],
+"variant_id": "gid://shopify/ProductVariant/49237139914942"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062252544190",
+"title": "Power Bank 20,000mAh",
+"price": 39.9,
+"currency": "SGD",
+"category": "Telecom and eSIM",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/power-bank-20-000mah",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "20,000mAh power bank with 22.5W fast charging and dual USB-C and USB-A outputs.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Telecom and eSIM"
+],
+"tags": [
+"charging",
+"power bank",
+"telecom"
+],
+"variant_id": "gid://shopify/ProductVariant/49237140930750"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062253166782",
+"title": "Premium Fountain Pen Set",
+"price": 32.9,
+"currency": "SGD",
+"category": "Retail and Gifts",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/premium-fountain-pen-set",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Smooth-writing fountain pen with ink cartridges and a gift tin. A thoughtful gift for dad or a student.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Retail and Gifts"
+],
+"tags": [
+"gift",
+"pens",
+"retail",
+"stationery"
+],
+"variant_id": "gid://shopify/ProductVariant/49237141553342"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062253199550",
+"title": "Academic Planner 2027",
+"price": 19.9,
+"currency": "SGD",
+"category": "Retail and Gifts",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/academic-planner-2027",
+"Billing": "Monthly",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Week-to-view planner for Jan to Dec 2027 with monthly spreads and a ribbon marker.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Retail and Gifts"
+],
+"tags": [
+"2027",
+"planner",
+"retail",
+"stationery"
+],
+"variant_id": "gid://shopify/ProductVariant/49237141586110"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062253363390",
+"title": "School Stationery Starter Set",
+"price": 21.9,
+"currency": "SGD",
+"category": "Retail and Gifts",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/school-stationery-starter-set",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Pens, pencils, eraser, ruler, highlighters and a pencil case for the new school term.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Retail and Gifts"
+],
+"tags": [
+"kids",
+"retail",
+"school",
+"stationery"
+],
+"variant_id": "gid://shopify/ProductVariant/49237142110398"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062253396158",
+"title": "iKnowledge Baseball Cap",
+"price": 19.9,
+"currency": "SGD",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/iknowledge-baseball-cap",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Cotton twill cap with embroidered iKnowledge logo and adjustable strap.",
+"options": {},
+"option_values": {}
+},
+"collections": [],
+"tags": [
+"apparel",
+"cap",
+"hat",
+"iknowledge"
+],
+"variant_id": "gid://shopify/ProductVariant/49237142143166"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062253559998",
+"title": "Travel Compression Socks (2 pairs)",
+"price": 19.9,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/travel-compression-socks-2-pairs",
+"Pack": "2 pieces",
+"Delivery": "Shipped"
+},
+"in_stock": true,
+"short_description": "Comfortable compression socks for long flights, helping with tired legs.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"apparel",
+"compression",
+"socks",
+"travel"
+],
+"variant_id": "gid://shopify/ProductVariant/49237142864062"
+},
+{
+"product": {
+"product_id": "gid://shopify/Product/9062253723838",
+"title": "Car Rental Voucher $100",
+"price": 100.0,
+"currency": "SGD",
+"category": "Travel",
+"labels": [],
+"attributes": {
+"product_url": "https://iknowledge-dev.myshopify.com/products/car-rental-voucher-100",
+"Delivery": "Digital, by email"
+},
+"in_stock": true,
+"short_description": "Digital voucher worth $100 towards a rental with selected partners. Code delivered by email.",
+"options": {},
+"option_values": {}
+},
+"collections": [
+"Travel"
+],
+"tags": [
+"car rental",
+"travel",
+"voucher"
+],
+"variant_id": "gid://shopify/ProductVariant/49237143126206"
 }
 ]
 }

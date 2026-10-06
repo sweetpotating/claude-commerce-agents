@@ -34,7 +34,7 @@ from shopping_agent import Product
 from shopping_agent.executor import ShoppingToolExecutor
 
 from . import compare
-from .shopify_backend import CartRefused, ShopifyError
+from .shopify_backend import SEARCH_SOURCE, CartRefused, ShopifyError
 
 SEARCH_FIRST = (
     "Not added: this round also searches the catalog, and its results are not back yet. "
@@ -54,6 +54,17 @@ STORE_ERROR = (
 STORE_TIMEOUT = (
     "The store did not answer in time ({detail}). Tell the customer the store is slow right "
     "now and offer to try again in a moment; do not say the item is unavailable."
+)
+# The catalog could not be checked: never an absence claim, never tool talk (items 36, 40).
+SEARCH_FAILED = (
+    "The catalog could not be checked just now. Tell the customer, in these words or close: "
+    "'I couldn't check the catalog just now - please try again in a moment.' Do not say the "
+    "store does not carry or have the item, and do not mention searches, tools, or errors."
+)
+FROM_INDEX = (
+    "\n\nNote: the live catalog search is busy, so these results come from the store's "
+    "catalog list. Show them; if none fits, say you couldn't check the full catalog just now "
+    "rather than that the store doesn't carry it."
 )
 AMBIGUOUS_ADD = (
     "Not added yet: '{words}' fits more than one product: {names}. Show them with "
@@ -115,8 +126,14 @@ class StoreToolExecutor(ShoppingToolExecutor):
             if name == "add_to_cart" and (ask := self._ambiguous(tool_input)):
                 return ToolOutcome.error(ask)
             outcome = await ShoppingToolExecutor.execute(self, name, tool_input)
-            if name == "search_products" and not outcome.is_error:
-                self._note_found(outcome.result_text)
+            if name == "search_products":
+                source = SEARCH_SOURCE.get()
+                if outcome.is_error and source == "failed":
+                    outcome = ToolOutcome.error(SEARCH_FAILED)
+                elif not outcome.is_error:
+                    self._note_found(outcome.result_text)
+                    if source == "index":
+                        outcome.result_text += FROM_INDEX
             self._remember_cart_lines(outcome)
             return outcome
 

@@ -86,7 +86,8 @@ async def test_search_outage_with_no_index_says_what_happened(store):
     store.search_failures = 100
     ex = make_executor(backend)
     out = await ex.execute("search_products", {"query": "tent"})
-    assert out.is_error and "not answering right now" in out.result_text
+    assert out.is_error and "couldn't check the catalog just now" in out.result_text
+    assert "does not carry" in out.result_text  # the instruction not to claim absence
 
 
 # 26: the store's country unknown (meta.json rate limited) no longer refuses shipped items.
@@ -240,10 +241,10 @@ def test_load_test_token_skips_per_ip_limits(monkeypatch):
 async def test_a_throttled_store_pauses_catalog_calls(store):
     backend = make_backend(store)
     store.search_failures = 100
-    with pytest.raises(Exception, match="not answering|rate-limiting"):
+    with pytest.raises(Exception, match="could not be checked"):
         await backend.search_products(ctx(), "tent")
     calls = len(store.calls)
-    with pytest.raises(Exception, match="not answering|rate-limiting"):
+    with pytest.raises(Exception, match="could not be checked"):
         await backend.search_products(ctx(), "tour")
     assert len(store.calls) == calls  # paused: Shopify is not called again
     assert backend.degraded() and backend.health()["catalog_paused_seconds"] > 0

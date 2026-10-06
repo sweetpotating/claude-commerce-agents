@@ -373,7 +373,7 @@ def remember(t: Turn):
 
 
 SCENARIOS: list[tuple[str, Policy]] = [
-    (r"\bgifts?\b", discovery),
+    (r"\bgifts?\b|^shop ", discovery),
     (r"what sizes", tee_sizes),
     (r"add the (logo )?tee in (size )?m", add_tee_m),
     (r"add (a |the )?(bookworm )?mug", add_by_name("mug", "mug")),

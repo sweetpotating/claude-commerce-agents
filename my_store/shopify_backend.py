@@ -39,6 +39,7 @@ import re
 import time
 import uuid
 from collections import deque
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urlsplit, urlunsplit
@@ -65,6 +66,10 @@ from .facts import extract
 from .places import PLACE_NAMES, expansions
 
 logger = logging.getLogger(__name__)
+# Where the current search's results came from: "live" (Shopify's search), "index" (the
+# catalog index, Shopify failing), or "failed". The executor reads it after the call, so the
+# model never says the store lacks something it could not check (eval item 36).
+SEARCH_SOURCE: ContextVar[str] = ContextVar("search_source", default="live")
 
 # Shopify's hosted example profile declares catalog, cart, checkout and order capabilities.
 # Fine for development; host your own before going live (shopify.dev/docs/agents/profiles).
@@ -79,8 +84,14 @@ _RETRIES = 5  # cart and checkout writes, for 429, 430 and 502-504: 0.5+1+2+4+8s
 # 15s, the retries kept the throttle going, and replies hung until the connection dropped.
 _READ_TOOLS = {"search_catalog", "get_product", "lookup_catalog", "search_shop_policies_and_faqs"}
 _READ_RETRIES = 2
-_COOLDOWN_SECONDS = 60.0
-_MAX_COOLDOWN_SECONDS = 300.0
+# After a 429/430 that outlasts the retries: pause catalog reads 10s, doubling while the
+# throttle repeats, to at most 2 min (a Retry-After header wins). The first success resets it.
+_COOLDOWN_SECONDS = 10.0
+_MAX_COOLDOWN_SECONDS = 120.0
+# At most this many Shopify calls in flight from this server, across all chats: a burst of
+# chats queues for a moment instead of hitting Shopify at once (eval item 35).
+_MAX_IN_FLIGHT = 4
+_TRANSPORT_RETRIES = 1  # a timeout or dropped connection is tried once more
 # The catalog as last read on a machine that could reach the store (scripts/catalog_snapshot.py),
 # shipped with the code: what the index starts from if the live read fails at boot.
 SNAPSHOT_PATH = Path(__file__).parent / "catalog_snapshot.json"
@@ -90,7 +101,7 @@ _RETRY_STATUSES = (429, 430, 502, 503, 504)
 # The whole catalog, read page by page with an empty query and kept for an hour: what the
 # store sells by collection, catalog-wide price ranking (search returns a relevance cut of
 # at most 25), checking chip targets, and search answers while Shopify's search is failing.
-_INDEX_SECONDS = 3600
+_INDEX_SECONDS = 600  # re-read every 10 minutes in the background; live searches merge in new products
 _INDEX_PAGE = 50
 _INDEX_MAX_PAGES = 20
 # The store is "degraded" after this many failed catalog calls within the window with no
@@ -334,6 +345,11 @@ class ShopifyUCPBackend(StorefrontBackend):
         # Store health, for /healthz and for chips during an outage.
         self._failures: deque[float] = deque(maxlen=50)
         self._cooldown_until = 0.0
+        self._throttles = 0  # consecutive throttled calls
+        self._in_flight = asyncio.Semaphore(_MAX_IN_FLIGHT)
+        self._synced_at = 0.0  # when the index was last read in full (monotonic)
+        self._refreshing: asyncio.Task | None = None
+        self.index_version = 0  # bumped whenever the index changes
         self._last_ok = 0.0
         self.last_error = ""
         self._faqs_loaded_at = 0.0
@@ -431,16 +447,18 @@ class ShopifyUCPBackend(StorefrontBackend):
         url = self.ucp_endpoint if ucp else self.mcp_endpoint
         response = await self._post(url, body, headers, _READ_RETRIES if read else _RETRIES)
         if response.status_code in (429, 430):
+            self._throttles += 1
             try:
                 pause = float(response.headers.get("retry-after", ""))
             except ValueError:
-                pause = _COOLDOWN_SECONDS
-            pause = min(max(pause, _COOLDOWN_SECONDS), _MAX_COOLDOWN_SECONDS)
+                pause = _COOLDOWN_SECONDS * 2 ** (self._throttles - 1)
+            pause = min(pause, _MAX_COOLDOWN_SECONDS)
             self._cooldown_until = time.monotonic() + pause
             logger.warning(
                 "shopify throttled %s (HTTP %s): catalog calls pause %.0fs", tool, response.status_code, pause
             )
         response.raise_for_status()
+        self._throttles = 0
         data = response.json()
         if "error" in data:
             raise ShopifyError(f"{tool}: {data['error']}")
@@ -465,12 +483,23 @@ class ShopifyUCPBackend(StorefrontBackend):
     async def _post(
         self, url: str, body: dict[str, Any], headers: dict[str, str], retries: int = _RETRIES
     ) -> httpx.Response:
-        """POST, retried when Shopify is rate-limiting or briefly down (429, 502-504).
-        Seen live: four chats at once got 429 on cart writes, which reached the shopper as
-        "the store did not accept that". Waits Retry-After when given, else 0.5s, 1s, 2s."""
-        for attempt in range(retries + 1):
-            response = await self._http.post(url, json=body, headers=headers)
-            if response.status_code not in _RETRY_STATUSES or attempt == retries:
+        """POST, retried when Shopify is rate-limiting or briefly down (429, 430, 502-504;
+        Retry-After when given, else 0.5s, 1s, 2s...) and once after a timeout or dropped
+        connection. At most _MAX_IN_FLIGHT calls run at once across all chats."""
+        transport_tries = 0
+        attempt = 0
+        while True:
+            try:
+                async with self._in_flight:
+                    response = await self._http.post(url, json=body, headers=headers)
+            except httpx.TransportError as error:
+                if transport_tries >= _TRANSPORT_RETRIES:
+                    raise
+                transport_tries += 1
+                logger.warning("shopify %s, trying once more", type(error).__name__)
+                await asyncio.sleep(0.5)
+                continue
+            if response.status_code not in _RETRY_STATUSES or attempt >= retries:
                 if response.status_code in _RETRY_STATUSES:
                     logger.warning("shopify gave up after %d retries: HTTP %s", retries, response.status_code)
                 return response
@@ -479,8 +508,8 @@ class ShopifyUCPBackend(StorefrontBackend):
                 wait = float(response.headers.get("retry-after", ""))
             except ValueError:
                 wait = 0.5 * 2**attempt
+            attempt += 1
             await asyncio.sleep(min(wait, 8.0))
-        return response
 
     def _context(self) -> dict[str, Any]:
         return {"address_country": self._country} if self._country else {}
@@ -499,11 +528,16 @@ class ShopifyUCPBackend(StorefrontBackend):
                 response = await self._http.get(f"https://{self.domain}/meta.json")
                 response.raise_for_status()
                 meta = response.json()
-            except (httpx.HTTPError, ValueError):
-                # Keep the configured country for now (non-shipped items still add); retry
-                # in a few minutes rather than on every call.
-                self._store_retry_at = time.monotonic() + 30
-                logger.warning("meta.json unavailable; buyer country stays %s for now", self._country)
+            except (httpx.HTTPError, ValueError) as error:
+                # Keep the configured country for now (non-shipped items still add); try
+                # again shortly rather than on every call.
+                self._store_retry_at = time.monotonic() + 5
+                logger.warning(
+                    "meta.json unavailable (%s: %s); buyer country stays %s for now",
+                    type(error).__name__,
+                    error,
+                    self._country,
+                )
                 return
             self._store_loaded = True
         self._currency = meta.get("currency") or self._currency
@@ -603,48 +637,72 @@ class ShopifyUCPBackend(StorefrontBackend):
         limit: int = 8,
     ) -> list[Product]:
         filters = filters or SearchFilters()
+        SEARCH_SOURCE.set("live")
         await self._load_store()
         ranked = await self._ranked(query, filters, limit)
         if ranked is not None:
             return ranked
         try:
             products = await self._search(query, filters, limit)
-            extra = [(q, "place") for q in expansions(query)] + [(q, "word") for q in _synonym_queries(query)]
-            if extra:
-                # Travel products are titled by city ("Kuala Lumpur City Tour"), not country;
-                # a shopper's word may not be the title's ("hotel" -> "Bali Villa Stay").
-                found = await asyncio.gather(*(self._search(q, filters, limit) for q, _ in extra))
-                seen = {p.product_id for p in products}
-                for (q, kind), batch in zip(extra, found, strict=True):
-                    place = next((x for x in PLACE_NAMES if x in q), None) if kind == "place" else None
-                    for p in batch:
-                        text = f"{p.title} {p.short_description or ''}".lower()
-                        named = (place in text) if place else bool(re.search(rf"\b{re.escape(q)}", text))
-                        if named and p.product_id not in seen:  # Shopify's fuzzy matches dropped
-                            seen.add(p.product_id)
-                            products.append(p)
-                products = products[: max(limit, 12)]
-            if not products and _RANKING_WORDS.search(query):
-                # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales
-                # or rating data, so drop the ranking words and fall back to relevance.
-                rest = " ".join(_RANKING_WORDS.sub(" ", query).split())
-                products = await self._search(rest, filters, limit)
         except (ShopifyError, httpx.HTTPError) as error:
             if isinstance(error, ShopifyNotFound):
                 raise
-            # Shopify's search is failing (live: rate limited during a test crawl). Answer
-            # from the catalog index read earlier rather than with an error.
+            # Shopify's search is failing or paused. Answer from the catalog index rather
+            # than with an error; the executor tells the model these came from the index.
             self._failed(error)
-            fallback = self._index_match(query)
+            fallback = self._filtered(self._index_match(query), filters)[:limit]
             if not fallback:
-                raise ShopifyError(
-                    "the store's search is not answering right now (busy or rate-limited); "
-                    "try again in a minute"
-                ) from error
+                SEARCH_SOURCE.set("failed")
+                raise ShopifyError("the catalog could not be checked just now") from error
+            SEARCH_SOURCE.set("index")
             logger.warning("search %r answered from the catalog index (%s)", query, error)
-            return self._filtered(fallback, filters)[:limit]
+            return fallback
         self._ok()
+        self._merge_into_index(products)
+        products = await self._expand(query, filters, limit, products)
+        if not products and _RANKING_WORDS.search(query):
+            # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales
+            # or rating data, so drop the ranking words and fall back to relevance.
+            rest = " ".join(_RANKING_WORDS.sub(" ", query).split())
+            products = await self._search(rest, filters, limit)
         return products
+
+    async def _expand(
+        self, query: str, filters: SearchFilters, limit: int, products: list[Product]
+    ) -> list[Product]:
+        """Add what the query means but the titles don't say: a country's cities ("Japan" ->
+        "Mt Fuji Day Trip from Tokyo") and a word's catalog synonyms ("hotel" -> "Bali Villa
+        Stay"). From the catalog index when it is loaded: no extra Shopify calls (a search
+        used to fan out to a dozen, which a burst of chats turned into a throttle)."""
+        extra = [(q, "place") for q in expansions(query)] + [(q, "word") for q in _synonym_queries(query)]
+        if not extra:
+            return products
+        if self._index:
+            candidates = self._filtered(self._index_match(" ".join(q for q, _ in extra)), filters)
+            batches = [candidates] * len(extra)
+        else:
+            batches = [await self._search(q, filters, limit) for q, _ in extra]
+        seen = {p.product_id for p in products}
+        for (q, kind), batch in zip(extra, batches, strict=True):
+            place = next((x for x in PLACE_NAMES if x in q), None) if kind == "place" else None
+            for p in batch:
+                text = f"{p.title} {p.short_description or ''}".lower()
+                named = (place in text) if place else bool(re.search(rf"\b{re.escape(q)}", text))
+                if named and p.product_id not in seen:  # Shopify's fuzzy matches dropped
+                    seen.add(p.product_id)
+                    products.append(p)
+        return products[: max(limit, 12)]
+
+    def _merge_into_index(self, products: list[Product]) -> None:
+        """A product live search found that the index lacks (added since the last read)."""
+        if not self._index:
+            return
+        known = {p.product_id for p in self._index}
+        new = [p for p in products if p.product_id not in known and not p.variant_of]
+        if new:
+            self._index.extend(new)
+            self.index_version += 1
+            logger.info("catalog index: %d new product(s) from search", len(new))
 
     # -- the catalog index ---------------------------------------------------------------
 
@@ -653,6 +711,19 @@ class ShopifyUCPBackend(StorefrontBackend):
         keeps the last good index and tries again in a minute."""
         if self._index and self._index_until > time.monotonic():
             return self._index
+        if self._index:
+            # Stale: re-read in the background and answer from what we have now.
+            if self._refreshing is None or self._refreshing.done():
+                self._refreshing = asyncio.get_running_loop().create_task(self._read_index())
+            return self._index
+        return await self._read_index()
+
+    async def refresh_index(self) -> list[Product]:
+        """Re-read the catalog now (a product was added)."""
+        self._index_until = 0.0
+        return await self._read_index()
+
+    async def _read_index(self) -> list[Product]:
         async with self._index_lock:
             if self._index and self._index_until > time.monotonic():
                 return self._index
@@ -681,7 +752,9 @@ class ShopifyUCPBackend(StorefrontBackend):
                 self._index_until = time.monotonic() + 60
                 return self._index
             self._ok()
+            self._synced_at = time.monotonic()
             self._index = list(products.values())
+            self.index_version += 1
             self._index_until = time.monotonic() + _INDEX_SECONDS
             logger.info("catalog index: %d products", len(self._index))
             return self._index
@@ -818,12 +891,14 @@ class ShopifyUCPBackend(StorefrontBackend):
             "failures_last_5m": sum(1 for t in self._failures if now - t < 300),
             "last_error": self.last_error or None,
             "catalog_products": len(self._index),
+            "catalog_synced_seconds_ago": round(now - self._synced_at) if self._synced_at else None,
             "buyer_country": self._country,
             "store_meta_loaded": self._store_loaded,
         }
 
     async def _search(self, query: str, filters: SearchFilters, limit: int) -> list[Product]:
-        catalog: dict[str, Any] = {"query": query, "pagination": {"limit": limit}}
+        # One cache entry for "Hotel", "hotel " and "HOTEL".
+        catalog: dict[str, Any] = {"query": " ".join(query.lower().split()), "pagination": {"limit": limit}}
         if self._context():
             catalog["context"] = self._context()
         price = {

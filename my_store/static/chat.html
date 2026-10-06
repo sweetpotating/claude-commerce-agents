@@ -236,9 +236,22 @@
     });
   };
 
+  // A busy server answers 429 with retry_after: say so, wait, and try once more.
+  async function busyRetry(r, again) {
+    if (r.status !== 429) return r;
+    let wait = 5;
+    try { wait = (await r.clone().json()).retry_after || Number(r.headers.get("Retry-After")) || 5; } catch {}
+    if (wait > 20) return r; // a long wait: show the server's message instead
+    const note = add(el("div", "status", `Busy right now, retrying in ${wait}s…`));
+    await new Promise((ok) => setTimeout(ok, wait * 1000));
+    note.remove();
+    return again();
+  }
+
   async function ensureSession() {
     if (sessionId) return sessionId;
-    const r = await fetch("/api/session", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    const start = () => fetch("/api/session", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    const r = await busyRetry(await start(), start);
     if (!r.ok) throw new Error(await problem(r));
     sessionId = (await r.json()).session_id;
     saved.set(sessionId);
@@ -730,11 +743,12 @@
     const status = add(el("div", "status", "Thinking…"));
     try {
       await ensureSession();
-      const r = await fetch("/api/chat", {
+      const send = () => fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json", "x-session-id": sessionId },
         body: JSON.stringify({ message: text, source: source || null, page: PAGE }),
       });
+      const r = await busyRetry(await send(), send);
       if (r.status === 401) { sessionId = null; saved.set(null); throw new Error("Session expired. Send your message again."); }
       if (!r.ok || !r.body) throw new Error(await problem(r));
       const reader = r.body.getReader();

@@ -28,6 +28,9 @@ _CHECKOUT = re.compile(
 )
 _COMPARE = re.compile(r"^\s*compare\s+(.+)$", re.IGNORECASE)
 _SPLIT = re.compile(r"\s+(?:and|vs\.?|versus|with|or)\s+|,\s*", re.IGNORECASE)
+# "Try the search again", "Retry adding the mug": after a failed call these fail again
+# (eval item 45); the reply's own text says when to try again.
+RETRY = re.compile(r"\b(retry|try (it |that |this |the \w+ )?again|again)\b", re.IGNORECASE)
 _MORE = re.compile(r"\b(another|one more|again|second|extra)\b", re.IGNORECASE)
 _FILLER = frozenset(
     "a an the and or of for to in on my your our me show more browse shop see find get some any "
@@ -64,12 +67,15 @@ def clean(
     vocabulary: set[str],
     cart_titles: list[str],
     degraded: bool = False,
+    after_error: bool = False,
     limit: int = 4,
 ) -> list[str]:
     out: list[str] = []
     for chip in chips:
         chip = " ".join(str(chip).split())
         if not chip or chip in out or UNSUPPORTED.search(chip):
+            continue
+        if (after_error or degraded) and RETRY.search(chip):
             continue
         if _CHECKOUT.match(chip):
             if cart_titles:

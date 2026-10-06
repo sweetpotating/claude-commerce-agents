@@ -226,6 +226,38 @@ Fixes:
 
 Replayed in-process with the store throttled, "Gift ideas" and "Browse gifts under $50" each answered in 0.0 s with gift cards, with no errors and no retry chips.
 
+#### i19: load and outage (items 35-46), 2026-10-07
+
+Shopify's search, tested from this container, took 30 searches 4 at a time (3.3 s) and 40
+searches 20 at a time (1.4 s) with no 429. That rules out the store endpoint and agrees with
+#35 that the collapse was agent-side. Four agent-side causes:
+
+- each shopper search fanned out to up to about 12 Shopify calls
+- nothing capped concurrent calls
+- timeouts were never retried
+- a 60-300 s pause after one throttle response ("doesn't recover for minutes")
+
+| # | Fix |
+|---|---|
+| 35 | At most 4 Shopify calls in flight across all chats; country and synonym expansions matched in the catalog index (a search is 1 Shopify call, not up to 12); search cache keys normalized |
+| 36, 40 | A search that could not run tells the model to say "I couldn't check the catalog just now - please try again in a moment", never that the store lacks the item, and never to mention tools. Results answered from the index carry a note saying the same. |
+| 37 | A 429 carries `Retry-After` and `retry_after`. The page says "Busy right now, retrying in Ns…" and retries once. `SESSIONS_PER_HOUR` is now 60 (shared mobile and office IPs). Session ids are already reused per tab. |
+| 38 | Two text blocks with no tool call between them get a paragraph break |
+| 39 | Prompt: when nothing matches, at most one substitute labelled as an alternative, or no cards |
+| 41 | Moot (the catalog has the cards now) |
+| 42, 44 | The index is re-read every 10 minutes in the background. Products found by live search join it at once. `POST /api/catalog/refresh` (with `CATALOG_REFRESH_TOKEN`) re-reads on demand. `/healthz` shows `catalog_synced_seconds_ago`. The store now has 170 products (63 added since the afternoon), including Singapore and Hong Kong hotel vouchers. The snapshot was refreshed. |
+| 43, 46 | A throttle pauses for 10 s, doubling only while it repeats, up to 2 min; the first success resets it. A timeout or dropped connection is retried once. A 429 or 5xx is retried twice with backoff. |
+| 45 | After any tool error, no "try again" or "retry" chips |
+
+Load check: 60 chats, 10 at a time, through the real app and the live store (scripted
+model). All 60 succeeded in 5 s with 0 failed searches and 0 throttle responses.
+
+`NO_MODEL=1 scripts/loop.sh`:
+
+- 127 unit tests pass.
+- 22 API flows run with 0 errors.
+- The Chromium walk passes 22/22.
+
 ## Findings and fixes
 
 1. **Every physical product was "sold out" at the cart (fixed by configuration).**

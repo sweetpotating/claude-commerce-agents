@@ -22,6 +22,7 @@ class TextFlow:
         self._started = False  # this part has sent something
         self._sent_any = False
         self._ends_space = True
+        self._last = " "
 
     def tool(self) -> None:
         """A tool call: the next text is a new part."""
@@ -62,6 +63,12 @@ class TextFlow:
             self._started = True
             if self._sent_any and not self._ends_space:
                 text = "\n\n" + text.lstrip()
+        elif self._sent_any and self._last in ".!?" and text[:1].isupper():
+            # Two text blocks with no tool call between them arrive glued ("right now.No
+            # smartwatches", eval item 38): inside one block the model always puts a space
+            # after a full stop, so a capital straight after one starts a new block.
+            text = "\n\n" + text
         self._sent_any = True
         self._ends_space = text[-1].isspace()
+        self._last = text[-1]
         return text

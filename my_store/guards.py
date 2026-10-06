@@ -4,7 +4,7 @@ instance); move them to Redis before running several.
 
 Settings (environment), with defaults:
     CHAT_PER_MINUTE=10        messages per minute from one IP
-    SESSIONS_PER_HOUR=20      new chats per hour from one IP
+    SESSIONS_PER_HOUR=60      new chats per hour from one IP
     TURNS_PER_SESSION=40      messages in one chat
     TURNS_PER_DAY=1500        messages across all shoppers per UTC day
     TURNS_PER_IP_PER_DAY=150  messages from one IP per UTC day, so one visitor can't use the day up
@@ -30,7 +30,8 @@ def _int(name: str, default: int) -> int:
 
 
 CHAT_PER_MINUTE = _int("CHAT_PER_MINUTE", 10)
-SESSIONS_PER_HOUR = _int("SESSIONS_PER_HOUR", 20)
+# 60, not 20: a mobile carrier or an office puts many shoppers behind one IP.
+SESSIONS_PER_HOUR = _int("SESSIONS_PER_HOUR", 60)
 TURNS_PER_SESSION = _int("TURNS_PER_SESSION", 40)
 TURNS_PER_DAY = _int("TURNS_PER_DAY", 1500)
 TURNS_PER_IP_PER_DAY = _int("TURNS_PER_IP_PER_DAY", 150)
@@ -63,7 +64,9 @@ class RateLimiter:
         while hits and now - hits[0] >= self.window:
             hits.popleft()
         if len(hits) >= self.limit:
-            raise HTTPException(429, message)
+            # When the oldest hit leaves the window, a new one is allowed (eval item 37).
+            wait = max(1, int(self.window - (now - hits[0])) + 1)
+            raise HTTPException(429, message, headers={"Retry-After": str(wait)})
         hits.append(now)
         if len(self._hits) > 10_000:  # forget idle keys so the table stays small
             for k in [k for k, v in self._hits.items() if not v or now - v[-1] >= self.window]:
