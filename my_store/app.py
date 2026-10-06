@@ -41,7 +41,7 @@ from shopping_agent import (
 from shopping_agent.serialization import cart_payload
 from shopping_agent_runtime import ShoppingAgent
 
-from . import discovery, guards
+from . import discovery, fallback, guards
 from .backend import MyStoreBackend
 from .executor import StoreToolExecutor
 from .funnel import CLIENT_EVENTS, PRODUCT_COMPONENTS, funnel
@@ -298,8 +298,23 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
             logger.exception("chat turn failed (%s)", kind)
             funnel.record(s.session_id, "assistant_error", kind=kind)
             outage = kind.startswith("model_")
-            yield to_sse(AgentEvent.error(message))
             failed = True
+            if outage:
+                # Keep selling without the model: FAQ answers and product cards (fallback.py).
+                text, cards, chips = await fallback.answer(
+                    backend, ctx, s.state, body.message, body.page, CONTACT_EMAIL
+                )
+                yield to_sse(AgentEvent.text_delta(text))
+                if cards:
+                    funnel.record(s.session_id, "products_shown", source="fallback")
+                    yield to_sse(AgentEvent.ui("products", cards))
+                if chips:
+                    has_chips = True
+                    yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
+                if s.messages and s.messages[-1].get("role") == "user":  # keep turns alternating
+                    s.messages.append({"role": "assistant", "content": text})
+            else:
+                yield to_sse(AgentEvent.error(message))
         if search_chip and not titles and not failed:
             cards = discovery.fallback_products(s.state)
             if cards:
