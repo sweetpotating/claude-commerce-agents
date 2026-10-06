@@ -1,6 +1,6 @@
 """A minimal host for the shopping agent: sessions, streamed chat, cart, checkout webhook.
 
-    export ANTHROPIC_API_KEY=...
+    export ANTHROPIC_API_KEY=...   # or STORE_AGENT_ANTHROPIC_API_KEY (see below)
     uvicorn my_store.app:app --port 8000
 
     curl -s -XPOST localhost:8000/api/session -H 'content-type: application/json' \
@@ -39,6 +39,11 @@ from shopping_agent_runtime import ShoppingAgent
 
 from .backend import MyStoreBackend
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
+
+# Claude Code cloud environments reserve ANTHROPIC_API_KEY for their own sign-in and drop a
+# value set there, so the agent's key can come in under this name instead.
+if not os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("STORE_AGENT_ANTHROPIC_API_KEY"):
+    os.environ["ANTHROPIC_API_KEY"] = os.environ["STORE_AGENT_ANTHROPIC_API_KEY"]
 
 SKILLS_DIR = Path(__file__).resolve().parents[1] / "vendor/commerce-agents/shopping-agent/skills"
 

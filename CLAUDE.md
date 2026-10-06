@@ -24,7 +24,9 @@ python -m pytest -q                      # tests against the simulated store
 
 ## "Test Shopify" request
 
-The owner sets `SHOPIFY_STORE_DOMAIN` and `ANTHROPIC_API_KEY` as environment variables and
+The owner sets `SHOPIFY_STORE_DOMAIN` and `STORE_AGENT_ANTHROPIC_API_KEY` as environment
+variables (cloud environments drop `ANTHROPIC_API_KEY`; `my_store/app.py` copies the other
+name over) and
 allows `*.myshopify.com`, `api.shopify.com`, `api.anthropic.com` in network access. Then:
 
 1. `python -m scripts.shopify_smoke --query "<word matching their products>"`; if search
@@ -33,7 +35,7 @@ allows `*.myshopify.com`, `api.shopify.com`, `api.anthropic.com` in network acce
    (most likely: cart `line_items` in `_cart`, the policy answer in `search_policies`,
    `get_product` variants). Update `tests/fake_shopify.py` to the real shape so the tests
    keep matching, then `ruff check . && ruff format --check . && python -m pytest -q`.
-3. With `ANTHROPIC_API_KEY` set, run one live chat through `my_store/app.py`
+3. With `STORE_AGENT_ANTHROPIC_API_KEY` (or `ANTHROPIC_API_KEY`) set, run one live chat through `my_store/app.py`
    (`STORE_BACKEND=shopify`): search, pick a size, add, ask about returns, check out.
 4. Report plainly what passed and what failed; commit and push fixes to the working branch.
 
