@@ -152,7 +152,7 @@ class ShopifyUCPBackend(StorefrontBackend):
 
     async def _call(
         self, tool: str, arguments: dict[str, Any], *, ucp: bool = True, auth: bool = False
-    ) -> dict[str, Any]:
+    ) -> Any:
         if ucp:
             meta = {"ucp-agent": {"profile": self.profile}, **arguments.get("meta", {})}
             arguments = {**arguments, "meta": meta}
@@ -182,7 +182,8 @@ class ShopifyUCPBackend(StorefrontBackend):
             except ValueError:
                 content = {"text": joined}
         if result.get("isError"):
-            raise ShopifyError(f"{tool}: {content.get('messages') or content}")
+            messages = content.get("messages") if isinstance(content, dict) else None
+            raise ShopifyError(f"{tool}: {messages or content}")
         return content
 
     def _context(self) -> dict[str, Any]:
@@ -480,15 +481,17 @@ class ShopifyUCPBackend(StorefrontBackend):
 
     async def search_policies(self, session: ShoppingSessionContext, query: str) -> list[Policy]:
         content = await self._call("search_shop_policies_and_faqs", {"query": query}, ucp=False)
-        entries = content.get("policies") or content.get("results")
+        # Live stores answer with a JSON list of {"question", "answer"} pairs.
+        entries = content if isinstance(content, list) else content.get("policies") or content.get("results")
         if isinstance(entries, list):
             return [
                 Policy(
-                    policy_id=str(e.get("id") or e.get("title") or i),
-                    title=e.get("title") or "Store policy",
+                    policy_id=str(e.get("id") or e.get("title") or e.get("question") or i),
+                    title=e.get("title") or e.get("question") or "Store policy",
                     content=_text(e.get("body") or e.get("content") or e.get("answer")) or "",
                 )
                 for i, e in enumerate(entries)
+                if isinstance(e, dict)
             ]
         answer = content.get("text") or content.get("answer") or json.dumps(content)
         if not answer.strip():

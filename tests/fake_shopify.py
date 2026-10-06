@@ -207,12 +207,16 @@ class FakeShopifyStore:
         )
 
     def _search_shop_policies_and_faqs(self, body, args, request):
-        text = "Unused items can be returned within 30 days of delivery for a full refund."
+        # Live shape: a JSON list of question/answer pairs as text, no structuredContent.
+        faqs = [
+            {
+                "question": "What is your return policy?",
+                "answer": "Unused items can be returned within 30 days of delivery for a full refund.",
+            },
+            {"question": "Do you accept store credit?", "answer": "The store accepts store credit."},
+        ]
+        content = [{"type": "text", "mimeType": "application/json", "text": json.dumps(faqs)}]
         return httpx.Response(
             200,
-            json={
-                "jsonrpc": "2.0",
-                "id": body["id"],
-                "result": {"content": [{"type": "text", "text": text}]},
-            },
+            json={"jsonrpc": "2.0", "id": body["id"], "result": {"content": content, "isError": False}},
         )
