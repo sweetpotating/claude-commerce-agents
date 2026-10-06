@@ -103,6 +103,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         http: httpx.AsyncClient | None = None,
     ) -> None:
         domain = shop_domain.removeprefix("https://").removeprefix("http://").strip("/")
+        self.domain = domain
         self.ucp_endpoint = f"https://{domain}/api/ucp/mcp"
         self.mcp_endpoint = f"https://{domain}/api/mcp"
         self.profile = agent_profile_url
@@ -226,10 +227,23 @@ class ShopifyUCPBackend(StorefrontBackend):
             in_stock=bool(available) if variants else True,
             short_description=(_text(raw.get("description")) or "")[:300] or None,
             options=options,
+            attributes={"product_url": self._product_url(raw)},
         )
         if not options and len(variants) == 1:
             self._default_variant[product.product_id] = variants[0]["id"]
         return product
+
+    def _product_url(self, raw: dict[str, Any]) -> str:
+        """Where a shopper opens the product on the storefront: the catalog's own link when
+        it gives one, the /products/{handle} page, else a storefront search for the title."""
+        url = raw.get("url") or raw.get("online_store_url") or raw.get("onlineStoreUrl")
+        if not url and raw.get("handle"):
+            url = f"https://{self.domain}/products/{raw['handle']}"
+        if not url:
+            url = f"https://{self.domain}/search?" + urlencode(
+                {"q": raw.get("title") or "", "type": "product"}
+            )
+        return self._attributed(url)
 
     def _variant(self, raw: dict[str, Any], family: Product) -> Product:
         values = {o["name"]: o["label"] for o in raw.get("options") or []}

@@ -75,6 +75,18 @@ SEARCH_NOTES = (
     "catalog says; state fees and what is included only from tool results."
 )
 
+# Every recommendation should end on something the shopper can open and buy.
+DISCOVERY_NOTES = (
+    "Recommendations lead to products. Before you present a plan, itinerary, guide, or "
+    "comparison, search the catalog for each step or need it covers and attach the "
+    "matching product_ids; run several searches when steps differ. When a step is "
+    "something the store does not sell (flights, hotels, meals), keep it to one line "
+    "and spend the card on what the store does sell. After a text-only answer or a "
+    "guide, show the products it points to with present_products when any match. Of "
+    "the turn's suggestion chips, make at least one a concrete next product search "
+    "('Show more Tokyo day tours', 'Compare eSIM data plans')."
+)
+
 BRAND_VOICE = (
     "warm, candid, and practical: plain about trade-offs, upfront about fees and what is "
     "left, and never in a hurry to sell"
@@ -85,7 +97,7 @@ def industry_config_overrides() -> dict[str, Any]:
     """Settings layered over the Shopify config (``shopify_agent_config``)."""
     return {
         "brand_voice": BRAND_VOICE,
-        "domain_search_notes": os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES),
+        "domain_search_notes": os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES) + " " + DISCOVERY_NOTES,
         # Plan comparisons need every tier in one search (the telecom demo's setting).
         "max_search_results": 25,
         # The ticketing demo's cap: no one buys 40 of a ticket or a tour seat by mistake.
@@ -233,6 +245,10 @@ _MATRIX_SCHEMA: dict[str, Any] = {
 }
 
 
+# Attributes the UI uses itself rather than showing as a table row.
+_HIDDEN_ATTRIBUTES = {"product_url"}
+
+
 def _cell(value: Any) -> str:
     if value is None or value == "" or value == []:
         return "—"
@@ -256,7 +272,7 @@ async def _enrich_matrix(payload: PlanMatrixPayload, context: EnrichmentContext)
         rows.append({"label": "By", "values": [_cell(p.brand) for p in plans]})
     for name in dict.fromkeys(k for p in plans for k in p.options):
         rows.append({"label": name, "values": [_cell(p.options.get(name)) for p in plans]})
-    for key in dict.fromkeys(k for p in plans for k in p.attributes):
+    for key in dict.fromkeys(k for p in plans for k in p.attributes if k not in _HIDDEN_ATTRIBUTES):
         rows.append(
             {
                 "label": key.replace("_", " ").capitalize(),

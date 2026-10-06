@@ -90,3 +90,17 @@ async def test_plan_table_rows_come_from_the_catalog(executor):
     assert rows["Price"][0].startswith("48") and rows["Size"] == ["S, M, L", "—"]
     assert payload["recommended_plan_id"] == TENT
     assert payload["annotations"] == [{"plan_id": TEE, "best_for": "day trips"}]
+
+
+async def test_every_product_links_to_the_storefront(executor):
+    found = await executor.execute("search_products", {"query": "merino tee tent"})
+    assert f"https://{SHOP}/search?q=Ridgeline+Merino+Tee" in found.result_text
+    out = await executor.execute("present_plan_comparison", {"plan_ids": [TEE, TENT]})
+    payload = next(e for e in out.events if e.type == "ui").data["payload"]
+    assert all(p["attributes"]["product_url"].startswith(f"https://{SHOP}/") for p in payload["plans"])
+    assert "Product url" not in {r["label"] for r in payload["rows"]}  # a link, not a row
+
+
+def test_discovery_rules_reach_the_prompt():
+    notes = shopify_agent_config(**industry_config_overrides()).domain_search_notes
+    assert "Recommendations lead to products" in notes and "search the catalog for each step" in notes
