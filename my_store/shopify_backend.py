@@ -557,6 +557,13 @@ def shopify_agent_config(**overrides: Any) -> ShoppingAgentConfig:
         "brand_name": os.environ.get("STORE_BRAND_NAME", "our store"),
         "enable_orders": False,
         "enable_fulfillment": False,
+        # Without this the model assumed a generic "store" sells only physical goods and
+        # turned down a tour the live catalog carries, without searching.
+        "domain_search_notes": os.environ.get(
+            "STORE_SEARCH_NOTES",
+            "The catalog can hold services, experiences, and digital vouchers as well as "
+            "physical goods; search before saying the store does not carry something.",
+        ),
         "product_id_patterns": (
             *ShoppingAgentConfig.model_fields["product_id_patterns"].default,
             r"gid://shopify/(?:Product|ProductVariant|p)/[\w-]+",
