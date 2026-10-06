@@ -26,7 +26,7 @@ from typing import Any
 from commerce_common.memory import InMemoryMemoryStore
 from commerce_common.streaming import AgentEvent, to_sse
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from shopping_agent import (
     PageContext,
@@ -100,6 +100,12 @@ def context(s: Session, page: PageContext | None = None) -> ShoppingSessionConte
     return ShoppingSessionContext(
         session_id=s.session_id, user_id=s.user_id, page=page or PageContext(), now=datetime.now()
     )
+
+
+@app.get("/", include_in_schema=False)
+async def chat_page() -> FileResponse:
+    """A minimal browser chat over the API below, for trying the agent locally."""
+    return FileResponse(Path(__file__).parent / "static" / "chat.html")
 
 
 @app.post("/api/session")

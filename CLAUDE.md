@@ -11,7 +11,8 @@ merchant agents). The owner is connecting the shopping agent to their own Shopif
   over a Shopify store's UCP tools (`https://{shop}/api/ucp/mcp`) and policy tool
   (`https://{shop}/api/mcp`). Built from shopify.dev docs; tested only against
   `tests/fake_shopify.py`, **not yet against a live store**.
-- `my_store/app.py`: FastAPI host; `STORE_BACKEND=shopify` selects the Shopify backend.
+- `my_store/app.py`: FastAPI host; `STORE_BACKEND=shopify` selects the Shopify backend. `GET /`
+  serves `my_store/static/chat.html`, a browser chat over the API.
 
 ## Setup in a fresh session
 

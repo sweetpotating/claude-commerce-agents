@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopping Assistant</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e4e2dc;
+    --accent: #1f5f4a; --accent-ink: #ffffff; --me: #1f5f4a; --me-ink: #ffffff; --chip: #eef3f0;
+    --warn: #9a3412;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151615; --panel: #1f201f; --ink: #ecebe7; --muted: #a09f99; --line: #33342f;
+      --accent: #6fbf9f; --accent-ink: #0f1a15; --me: #2b6b55; --me-ink: #ffffff; --chip: #23302a;
+      --warn: #fb923c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  #cart-btn {
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+    border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit;
+  }
+  main { flex: 1; overflow-y: auto; }
+  #log { max-width: 760px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; word-wrap: break-word; }
+  .me { align-self: flex-end; background: var(--me); color: var(--me-ink); border-bottom-right-radius: 4px; }
+  .bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .status { align-self: flex-start; color: var(--muted); font-size: 13px; font-style: italic; }
+  .error { align-self: flex-start; color: var(--warn); font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--chip); color: var(--ink);
+    border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 14px;
+  }
+  .card-title { font-weight: 600; margin: 4px 0 8px; }
+  .products { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
+  .product {
+    flex: 0 0 220px; scroll-snap-align: start; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+  }
+  .product img { width: 100%; height: 140px; object-fit: cover; background: var(--line); }
+  .product .body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .product .name { font-weight: 600; font-size: 14px; }
+  .product .price { font-variant-numeric: tabular-nums; }
+  .product .reason { color: var(--muted); font-size: 13px; }
+  .product .oos { color: var(--warn); font-size: 13px; }
+  .product button, .primary {
+    margin-top: auto; border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; font: inherit;
+    background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; text-align: center;
+  }
+  .product button[disabled] { opacity: .5; cursor: default; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .lines li { display: flex; align-items: center; gap: 10px; }
+  .lines img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: var(--line); }
+  .lines .t { flex: 1; font-size: 14px; }
+  .lines .p { font-variant-numeric: tabular-nums; }
+  .total { display: flex; justify-content: space-between; border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; font-weight: 600; }
+  .note { color: var(--muted); font-size: 14px; margin: 8px 0; }
+  .handoffs { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  pre.raw { font-size: 12px; overflow-x: auto; margin: 0; }
+  #cart-drawer { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+  #cart-drawer[hidden] { display: none; }
+  footer { border-top: 1px solid var(--line); background: var(--panel); }
+  form { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 16px; }
+  input[type=text] {
+    flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    font: inherit; background: var(--bg); color: var(--ink);
+  }
+  form button { border: 0; border-radius: 10px; padding: 0 16px; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer; }
+  form button[disabled] { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Shopping Assistant</h1>
+  <button id="cart-btn" type="button">Cart (0)</button>
+</header>
+<main id="scroller">
+  <div id="cart-drawer" hidden></div>
+  <div id="log" aria-live="polite"></div>
+</main>
+<footer>
+  <form id="form">
+    <input id="input" type="text" placeholder="Ask about products, policies, or your cart…" autocomplete="off" required>
+    <button id="send" type="submit">Send</button>
+  </form>
+</footer>
+<script>
+(() => {
+  const log = document.getElementById("log");
+  const scroller = document.getElementById("scroller");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const send = document.getElementById("send");
+  const cartBtn = document.getElementById("cart-btn");
+  const drawer = document.getElementById("cart-drawer");
+  let sessionId = null;
+  let busy = false;
+  let cart = { items: [], item_count: 0, subtotal: 0, currency: "" };
+
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const money = (v, c) => {
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: c || "USD" }).format(v); }
+    catch { return `${Number(v).toFixed(2)} ${c || ""}`.trim(); }
+  };
+  const scrollDown = () => { scroller.scrollTop = scroller.scrollHeight; };
+  const add = (node) => { log.appendChild(node); scrollDown(); return node; };
+  // Plain text with **bold** only; everything else is escaped by textContent.
+  const setText = (node, text) => {
+    node.replaceChildren();
+    text.split(/(\*\*[^*]+\*\*)/g).forEach((part) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) node.appendChild(el("strong", null, part.slice(2, -2)));
+      else if (part) node.appendChild(document.createTextNode(part));
+    });
+  };
+
+  async function ensureSession() {
+    if (sessionId) return sessionId;
+    const r = await fetch("/api/session", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    if (!r.ok) throw new Error(`session ${r.status}`);
+    sessionId = (await r.json()).session_id;
+    return sessionId;
+  }
+
+  function renderCart() {
+    cartBtn.textContent = `Cart (${cart.item_count || 0})`;
+    drawer.replaceChildren(cartPanel(cart, "Your cart"));
+  }
+
+  function cartPanel(c, title) {
+    const box = el("div", "panel");
+    box.appendChild(el("div", "card-title", title));
+    if (!c.items || !c.items.length) { box.appendChild(el("div", "note", "Your cart is empty.")); return box; }
+    const ul = el("ul", "lines");
+    c.items.forEach((it) => {
+      const li = el("li");
+      const img = el("img"); img.alt = ""; if (it.image_url) img.src = it.image_url; li.appendChild(img);
+      li.appendChild(el("span", "t", `${it.title} × ${it.quantity}`));
+      li.appendChild(el("span", "p", money(it.line_total ?? it.price * it.quantity, c.currency)));
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    const tot = el("div", "total");
+    tot.appendChild(el("span", null, "Subtotal"));
+    tot.appendChild(el("span", null, money(c.subtotal, c.currency)));
+    box.appendChild(tot);
+    return box;
+  }
+
+  function productsCard(p) {
+    const wrap = el("div");
+    if (p.title) wrap.appendChild(el("div", "card-title", p.title));
+    const row = el("div", "products");
+    (p.items || []).forEach(({ product, reason }) => {
+      if (!product) return;
+      const card = el("div", "product");
+      const img = el("img"); img.alt = product.title; img.loading = "lazy";
+      if (product.image_url) img.src = product.image_url;
+      card.appendChild(img);
+      const body = el("div", "body");
+      body.appendChild(el("div", "name", product.title));
+      body.appendChild(el("div", "price", money(product.price, product.currency)));
+      if (reason) body.appendChild(el("div", "reason", reason));
+      const opts = Object.entries(product.options || {});
+      if (opts.length) body.appendChild(el("div", "reason", opts.map(([k, v]) => `${k}: ${v.join(", ")}`).join(" · ")));
+      if (product.in_stock === false) body.appendChild(el("div", "oos", "Out of stock"));
+      const b = el("button", null, opts.length ? "Choose options" : "Add to cart");
+      b.type = "button";
+      b.disabled = product.in_stock === false;
+      b.onclick = () => ask(opts.length ? `I'd like the ${product.title}. What options are there?` : `Add the ${product.title} to my cart.`);
+      body.appendChild(b);
+      card.appendChild(body);
+      row.appendChild(card);
+    });
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  function checkoutCard(p) {
+    const box = p.cart ? cartPanel(p.cart, "Checkout") : el("div", "panel");
+    if (p.note) box.appendChild(el("div", "note", p.note));
+    const hs = el("div", "handoffs");
+    (p.handoffs || []).forEach((h) => {
+      const a = el("a", "primary", h.label || "Check out");
+      a.href = h.url; a.target = "_blank"; a.rel = "noopener";
+      hs.appendChild(a);
+    });
+    box.appendChild(hs);
+    return box;
+  }
+
+  function suggestions(p) {
+    const row = el("div", "chips");
+    (p.suggestions || []).forEach((s) => {
+      const b = el("button", "chip", s); b.type = "button";
+      b.onclick = () => ask(s);
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+  function renderUi(data) {
+    const p = data.payload || {};
+    switch (data.component) {
+      case "products": return add(productsCard(p));
+      case "checkout": return add(checkoutCard(p));
+      case "suggestions": return add(suggestions(p));
+      default: {
+        const box = el("div", "panel");
+        box.appendChild(el("div", "card-title", data.component));
+        box.appendChild(el("pre", "raw", JSON.stringify(p, null, 2)));
+        return add(box);
+      }
+    }
+  }
+
+  async function ask(text) {
+    if (busy || !text.trim()) return;
+    busy = true; send.disabled = true;
+    log.querySelectorAll(".chips").forEach((n) => n.remove()); // old suggestions go stale
+    add(el("div", "msg me", text));
+    let bubble = null, buf = "";
+    const status = add(el("div", "status", "Thinking…"));
+    try {
+      await ensureSession();
+      const r = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-session-id": sessionId },
+        body: JSON.stringify({ message: text }),
+      });
+      if (r.status === 401) { sessionId = null; throw new Error("Session expired. Send your message again."); }
+      if (!r.ok || !r.body) throw new Error(`Request failed (${r.status})`);
+      const reader = r.body.getReader();
+      const dec = new TextDecoder();
+      let pending = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        pending += dec.decode(value, { stream: true });
+        let cut;
+        while ((cut = pending.indexOf("\n\n")) !== -1) {
+          const block = pending.slice(0, cut); pending = pending.slice(cut + 2);
+          let ev = "message", data = "";
+          block.split("\n").forEach((line) => {
+            if (line.startsWith("event:")) ev = line.slice(6).trim();
+            else if (line.startsWith("data:")) data += line.slice(5).trim();
+          });
+          if (!data) continue;
+          let d; try { d = JSON.parse(data); } catch { continue; }
+          if (ev === "text_delta") {
+            if (!bubble) { bubble = el("div", "msg bot"); log.insertBefore(bubble, status); }
+            buf += d.text || ""; setText(bubble, buf); scrollDown();
+          } else if (ev === "tool_call") {
+            status.textContent = (d.label || "Working") + "…";
+          } else if (ev === "ui") {
+            bubble = null; buf = ""; // text after a card starts a new bubble
+            log.insertBefore(renderUi(d), status);
+          } else if (ev === "cart_update") {
+            cart = d.cart || cart; renderCart();
+          } else if (ev === "error") {
+            log.insertBefore(el("div", "error", d.message || "Something went wrong."), status);
+          }
+        }
+      }
+    } catch (e) {
+      add(el("div", "error", e.message || String(e)));
+    } finally {
+      status.remove();
+      busy = false; send.disabled = false; input.focus(); scrollDown();
+    }
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = input.value; input.value = ""; ask(t);
+  });
+  cartBtn.addEventListener("click", async () => {
+    drawer.hidden = !drawer.hidden;
+    if (!drawer.hidden && sessionId) {
+      try {
+        const r = await fetch("/api/cart", { headers: { "x-session-id": sessionId } });
+        if (r.ok) cart = await r.json();
+      } catch {}
+    }
+    renderCart();
+    if (!drawer.hidden) scroller.scrollTop = 0;
+  });
+  renderCart();
+  add(el("div", "msg bot", "Hi! What are you looking for today?"));
+  input.focus();
+})();
+</script>
+</body>
+</html>
