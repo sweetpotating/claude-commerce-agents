@@ -204,6 +204,92 @@ async def get_cart(x_session_id: str | None = Header(default=None)) -> dict:
     return cart_payload(await backend.get_cart(context(s)))
 
 
+# -- Happy-path buttons --------------------------------------------------------------------
+# A recommendation card's buttons act directly, without a model turn: choose a variant, add,
+# check out. Each runs through the agent's own executor, so the provenance gate (only
+# products this chat has shown), option and stock checks, and quantity caps still hold, and
+# the agent is told on its next turn what the shopper did.
+
+
+class CartAdd(BaseModel):
+    product_id: str = Field(min_length=1, max_length=200)
+    quantity: int = Field(default=1, ge=1, le=99)
+
+
+class ProductRef(BaseModel):
+    product_id: str = Field(min_length=1, max_length=200)
+
+
+def executor_for(s: Session):
+    return agent.executor_class(
+        backend=backend,
+        config=agent.config,
+        skills=agent.skills,
+        session=context(s),
+        state=s.state,
+        memory=agent.memory,
+        extensions=agent.extra_presentation_tools,
+    )
+
+
+def _first_sentence(text: str) -> str:
+    text = " ".join(text.split())
+    return (text.split(". ")[0].rstrip(".") + ".")[:240] if text else "That didn't work."
+
+
+@app.post("/api/product/options")
+async def product_options(body: ProductRef, x_session_id: str | None = Header(default=None)) -> dict:
+    """The variants of a product this chat showed, so the card can offer them as buttons."""
+    s = current(x_session_id)
+    if body.product_id not in s.state.seen_products:
+        raise HTTPException(400, "Ask the assistant about this product first.")
+    details = await backend.get_product_details(context(s), body.product_id)
+    if details is None:
+        raise HTTPException(404, "This product is no longer available.")
+    s.state.remember_products([details, *details.variants])  # as the agent's own lookup does
+    return {
+        "product_id": details.product_id,
+        "title": details.title,
+        "options": details.options,
+        "variants": [
+            {
+                "product_id": v.product_id,
+                "option_values": v.option_values,
+                "price": v.price,
+                "currency": v.currency,
+                "in_stock": v.in_stock,
+            }
+            for v in details.variants
+        ],
+    }
+
+
+@app.post("/api/cart/add")
+async def cart_add(body: CartAdd, x_session_id: str | None = Header(default=None)) -> dict:
+    s = current(x_session_id)
+    out = await executor_for(s).execute("add_to_cart", body.model_dump())
+    if out.blocked or out.is_error:
+        raise HTTPException(400, _first_sentence(out.result_text))
+    product = s.state.seen_products.get(body.product_id)
+    title = (product.title if product else body.product_id)[:120]
+    s.pending_app_events.append(
+        f"Customer tapped Add to cart on {title} ({body.product_id}), quantity {body.quantity}."
+    )
+    return cart_payload(await backend.get_cart(context(s)))
+
+
+@app.post("/api/checkout")
+async def checkout(x_session_id: str | None = Header(default=None)) -> dict:
+    """Stage the cart and return the checkout card (with the Shopify checkout link)."""
+    s = current(x_session_id)
+    out = await executor_for(s).execute("checkout", {})
+    card = next((e.data.get("payload") for e in out.events if e.type == "ui"), None)
+    if out.is_error or out.blocked or card is None:
+        raise HTTPException(400, _first_sentence(out.result_text))
+    s.pending_app_events.append("Customer tapped Checkout; the checkout link was shown.")
+    return card
+
+
 @app.post("/webhooks/checkout-complete/{token}")
 async def checkout_complete(token: str) -> dict:
     """Your payment provider calls this when the hosted checkout is paid.

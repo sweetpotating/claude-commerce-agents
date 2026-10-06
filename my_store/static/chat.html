@@ -106,6 +106,15 @@
   .status-pill { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; text-transform: capitalize; }
   #cart-drawer { max-width: 760px; margin: 0 auto; padding: 0 16px; }
   #cart-drawer[hidden] { display: none; }
+  #checkout-bar { max-width: 760px; margin: 0 auto; padding: 10px 16px 0; display: flex; flex-direction: column; gap: 6px; }
+  #checkout-bar[hidden], #checkout-bar [hidden] { display: none; }
+  #checkout-bar .primary { width: 100%; text-align: center; }
+  .buy { display: flex; flex-direction: column; gap: 6px; }
+  .variants { display: flex; flex-wrap: wrap; gap: 6px; }
+  .variants button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .variants button[disabled] { opacity: .45; text-decoration: line-through; cursor: default; }
+  .buy .msg-err { color: var(--warn); font-size: 12px; }
+  .buy .added { color: var(--accent); font-size: 13px; font-weight: 600; }
   footer { border-top: 1px solid var(--line); background: var(--panel); }
   form { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; padding: 12px 16px; }
   input[type=text] {
@@ -129,6 +138,11 @@
   <div id="log" aria-live="polite"></div>
 </main>
 <footer>
+  <div id="checkout-bar" hidden>
+    <button id="checkout-btn" type="button" class="primary"></button>
+    <a id="checkout-go" class="primary" hidden rel="noopener">Continue to secure checkout →</a>
+    <div id="checkout-msg" class="error" hidden></div>
+  </div>
   <form id="form">
     <input id="input" type="text" placeholder="Ask about products, policies, or your cart…" autocomplete="off" required>
     <button id="send" type="submit">Send</button>
@@ -143,6 +157,10 @@
   const send = document.getElementById("send");
   const cartBtn = document.getElementById("cart-btn");
   const drawer = document.getElementById("cart-drawer");
+  const checkoutBar = document.getElementById("checkout-bar");
+  const checkoutBtn = document.getElementById("checkout-btn");
+  const checkoutGo = document.getElementById("checkout-go");
+  const checkoutMsg = document.getElementById("checkout-msg");
   const embedded = new URLSearchParams(location.search).has("embed");
   const SESSION_KEY = "shopping-assistant-session";
   const saved = {
@@ -189,8 +207,70 @@
   }
 
   function renderCart() {
-    cartBtn.textContent = `Cart (${cart.item_count || 0})`;
+    const n = cart.item_count || 0;
+    cartBtn.textContent = `Cart (${n})`;
     drawer.replaceChildren(cartPanel(cart, "Your cart"));
+    // The happy path ends here: one tap stages checkout, the next opens Shopify's checkout.
+    checkoutBar.hidden = n === 0;
+    checkoutBtn.textContent = `Checkout · ${n} item${n === 1 ? "" : "s"} · ${money(cart.subtotal || 0, cart.currency)}`;
+    checkoutBtn.hidden = false; checkoutGo.hidden = true; checkoutMsg.hidden = true;
+  }
+
+  async function api(path, payload) {
+    await ensureSession();
+    const r = await fetch(path, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-session-id": sessionId },
+      body: JSON.stringify(payload || {}),
+    });
+    if (r.status === 401) { sessionId = null; saved.set(null); throw new Error("Your chat expired. Ask again to continue."); }
+    if (!r.ok) throw new Error(await problem(r));
+    return r.json();
+  }
+
+  async function addDirect(productId, label, box) {
+    box.querySelectorAll(".msg-err, .added").forEach((n) => n.remove());
+    try {
+      cart = await api("/api/cart/add", { product_id: productId, quantity: 1 });
+      renderCart();
+      box.appendChild(el("div", "added", `Added ${label} to your cart ✓`));
+    } catch (e) {
+      box.appendChild(el("div", "msg-err", e.message));
+    }
+  }
+
+  // Add to cart straight from a card; a product with options shows its variants first.
+  function buyControls(product, compact) {
+    const box = el("div", "buy");
+    const hasOptions = Object.keys(product.options || {}).length > 0;
+    const b = el("button", null, hasOptions ? (compact ? "Choose" : "Choose options") : (compact ? "Add" : "Add to cart"));
+    b.type = "button";
+    b.disabled = product.in_stock === false;
+    b.onclick = async () => {
+      if (!hasOptions) { b.disabled = true; await addDirect(product.product_id, product.title, box); b.disabled = false; return; }
+      b.disabled = true;
+      try {
+        const d = await api("/api/product/options", { product_id: product.product_id });
+        const row = el("div", "variants");
+        (d.variants || []).forEach((v) => {
+          const name = Object.values(v.option_values || {}).join(" / ") || "Standard";
+          const label = v.price != null && v.price !== product.price ? `${name} · ${money(v.price, v.currency)}` : name;
+          const vb = el("button", null, label); vb.type = "button";
+          vb.disabled = v.in_stock === false;
+          if (v.in_stock === false) vb.title = "Sold out";
+          vb.onclick = () => addDirect(v.product_id, `${product.title} (${name})`, box);
+          row.appendChild(vb);
+        });
+        if (!row.children.length) throw new Error("No options available right now.");
+        b.replaceWith(row);
+      } catch (e) {
+        b.disabled = false;
+        // Fall back to the assistant, which can explain the options in words.
+        ask(`I'd like the ${product.title}. What options are there?`);
+      }
+    };
+    box.appendChild(b);
+    return box;
   }
 
   function cartPanel(c, title) {
@@ -241,11 +321,7 @@
     const opts = Object.entries(product.options || {});
     if (opts.length) body.appendChild(el("div", "reason", opts.map(([k, v]) => `${k}: ${[].concat(v).join(", ")}`).join(" · ")));
     if (product.in_stock === false) body.appendChild(el("div", "oos", "Out of stock"));
-    const b = el("button", null, opts.length ? "Choose options" : "Add to cart");
-    b.type = "button";
-    b.disabled = product.in_stock === false;
-    b.onclick = () => ask(opts.length ? `I'd like the ${product.title}. What options are there?` : `Add the ${product.title} to my cart.`);
-    body.appendChild(b);
+    body.appendChild(buyControls(product, false));
     if (productUrl(product)) body.appendChild(productLink(product, el("span", "view", "View details")));
     card.appendChild(body);
     return card;
@@ -400,12 +476,7 @@
     };
     (p.rows || []).forEach((r) => addRow(r.label, r.values || []));
     if (Object.keys(best).length) addRow("Best for", plans.map((pl) => best[pl.product_id] || "—"));
-    addRow("", plans.map((pl) => {
-      const b = el("button", null, Object.keys(pl.options || {}).length ? "Choose" : "Add");
-      b.type = "button"; b.disabled = pl.in_stock === false;
-      b.onclick = () => ask(Object.keys(pl.options || {}).length ? `I'd like the ${pl.title}. What options are there?` : `Add the ${pl.title} to my cart.`);
-      return b;
-    }));
+    addRow("", plans.map((pl) => buyControls(pl, true)));
     table.appendChild(tbody); wrap.appendChild(table); box.appendChild(wrap);
     return box;
   }
@@ -530,6 +601,22 @@
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const t = input.value; input.value = ""; ask(t);
+  });
+  checkoutBtn.addEventListener("click", async () => {
+    checkoutBtn.disabled = true; checkoutMsg.hidden = true;
+    try {
+      const card = await api("/api/checkout");
+      const url = (card.handoffs || [])[0] && card.handoffs[0].url;
+      if (!url) throw new Error("Checkout isn't available right now. Ask the assistant for help.");
+      add(checkoutCard(card));
+      checkoutGo.href = url;
+      checkoutGo.target = embedded ? "_top" : "_blank"; // in the store, check out in the same tab
+      checkoutBtn.hidden = true; checkoutGo.hidden = false;
+    } catch (e) {
+      checkoutMsg.textContent = e.message; checkoutMsg.hidden = false;
+    } finally {
+      checkoutBtn.disabled = false;
+    }
   });
   cartBtn.addEventListener("click", async () => {
     drawer.hidden = !drawer.hidden;
