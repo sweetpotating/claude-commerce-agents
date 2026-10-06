@@ -1,0 +1,16 @@
+[
+  {"id": "compare-001-two-tours", "priority": "high", "tags": ["compare", "conversion"],
+   "turns": ["Compare two tours"],
+   "expected": {"ui_any": ["comparison", "plan_matrix"], "products_shown_min": 2,
+     "reply_omits": ["which two"]}},
+  {"id": "compare-002-named", "priority": "high", "tags": ["compare", "conversion"],
+   "turns": ["Mt Fuji day trip vs Kuala Lumpur city tour - which is better value?"],
+   "expected": {"ui_any": ["comparison", "plan_matrix"], "products_shown_title": ["mt fuji", "kuala lumpur"]}},
+  {"id": "compare-003-plans", "priority": "high", "tags": ["compare"],
+   "turns": ["compare your mobile plans"],
+   "expected": {"ui_any": ["plan_matrix", "comparison"], "products_shown_title": ["starter 30gb", "plus 100gb"]}},
+  {"id": "plan-001-singapore-trip", "priority": "high", "tags": ["plan", "conversion"],
+   "turns": ["Plan a 2-day trip to Singapore using what you sell"],
+   "expected": {"ui_any": ["plan", "itinerary"], "products_shown_min": 3,
+     "rubric": "PASS if the plan attaches Singapore products the store sells (such as the City Pass, Universal Studios ticket, airport transfer, or Singapore SIM) and does not present hotels, flights, or meals as store products. FAIL if it attaches non-Singapore products as Singapore steps or invents products."}}
+]

@@ -1,0 +1,57 @@
+# Every push: lint and the offline tests. Nightly (and on demand): the live evals, when the
+# repository has the secrets for them (Settings > Secrets and variables > Actions):
+#   secrets.ANTHROPIC_API_KEY, secrets.SHOPIFY_CLIENT_ID, secrets.SHOPIFY_CLIENT_SECRET
+#   vars.SHOPIFY_STORE_DOMAIN (e.g. iknowledge-dev.myshopify.com), vars.SHOPIFY_BUYER_COUNTRY
+name: ci
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 18 * * *" # 02:17 Singapore time
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "eval runner arguments (e.g. --tags conversion -n 3)"
+        required: false
+        default: ""
+
+jobs:
+  checks:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the reference agent (pinned) and test tools
+        run: ./scripts/render_build.sh && pip install -q ruff pytest pytest-asyncio
+      - name: Lint and unit tests
+        run: OFFLINE=1 ./scripts/loop.sh
+
+  evals:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+      SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+      SHOPIFY_STORE_DOMAIN: ${{ vars.SHOPIFY_STORE_DOMAIN }}
+      SHOPIFY_BUYER_COUNTRY: ${{ vars.SHOPIFY_BUYER_COUNTRY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: ./scripts/render_build.sh && pip install -q ruff pytest pytest-asyncio
+      - name: Lint, tests, smoke, evals
+        run: ./scripts/loop.sh ${{ github.event.inputs.args }}
+      - name: Keep the eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: evals/results/

@@ -1,0 +1,12 @@
+[
+  {"id": "checkout-001-chat", "priority": "critical", "tags": ["checkout", "conversion"],
+   "state": {"seen": ["Bookworm Ceramic Mug"], "cart": [{"title": "Bookworm Ceramic Mug"}]},
+   "turns": ["I'm ready to check out"],
+   "expected": {"ui_components": ["checkout"], "checkout_handoff": true,
+     "reply_omits": ["confirm in the app"],
+     "rubric": "PASS if the reply points the shopper to the checkout button to finish on the store's checkout and does not claim an order was placed or payment taken. FAIL if it says the order is placed or paid."}},
+  {"id": "checkout-002-empty-cart", "priority": "high", "tags": ["checkout", "negative"],
+   "turns": ["check out please"],
+   "expected": {"checkout_handoff": false,
+     "rubric": "PASS if the reply says the cart is empty and offers a next step toward products. FAIL if it claims a checkout or order exists."}}
+]

@@ -1,0 +1,15 @@
+[
+  {"id": "page-001-this-product-sizes", "priority": "critical", "tags": ["page", "conversion"],
+   "state": {"page": {"page_type": "product", "product_id": "gid://shopify/Product/9061072011454"}},
+   "turns": ["Does this come in M?"],
+   "expected": {"never_calls": ["search_products"],
+     "rubric": "PASS if the reply answers about the iKnowledge Logo Tee (the product on the page) and says size M is available. FAIL if it asks which product the shopper means or talks about another product."}},
+  {"id": "page-002-add-this", "priority": "critical", "tags": ["page", "conversion"],
+   "state": {"page": {"page_type": "product", "product_id": "gid://shopify/Product/9061072011454"}},
+   "turns": ["Add this to my cart in size S"],
+   "expected": {"cart_contains": ["logo tee - s"], "never_calls": ["search_products"]}},
+  {"id": "page-003-similar", "priority": "medium", "tags": ["page"],
+   "state": {"page": {"page_type": "product", "product_id": "gid://shopify/Product/9061072011454"}},
+   "turns": ["Show similar items"],
+   "expected": {"products_shown_min": 1}}
+]

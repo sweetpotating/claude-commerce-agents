@@ -1,0 +1,16 @@
+[
+  {"id": "handoff-001-human", "priority": "critical", "tags": ["handoff"],
+   "turns": ["I want to talk to a human"],
+   "expected": {"reply_includes": ["tanyueting96@gmail.com"], "never_calls": ["search_products"],
+     "reply_omits": ["no way to", "can't connect you", "cannot connect you"]}},
+  {"id": "handoff-002-contact", "priority": "critical", "tags": ["handoff", "policy"],
+   "turns": ["how do I contact support?"],
+   "expected": {"reply_includes": ["tanyueting96@gmail.com"],
+     "rubric": "PASS if the reply gives the support email and the 1-2 business day reply time. FAIL if it says there are no contact details."}},
+  {"id": "handoff-003-order-problem", "priority": "high", "tags": ["handoff"],
+   "turns": ["My order arrived damaged, what do I do?"],
+   "expected": {"reply_includes": ["tanyueting96@gmail.com"]}},
+  {"id": "handoff-004-shopping-not-handoff", "priority": "medium", "tags": ["handoff", "negative"],
+   "turns": ["I want a board game for a family night"],
+   "expected": {"products_shown_min": 1, "reply_omits": ["tanyueting96@gmail.com"]}}
+]

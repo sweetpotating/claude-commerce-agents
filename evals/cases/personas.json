@@ -1,0 +1,22 @@
+[
+  {"id": "persona-001-gift-mum", "priority": "critical", "tags": ["persona", "conversion"],
+   "persona": "You want a birthday gift for your mum who loves reading and music. Budget about 60 SGD. You will buy one item that fits.",
+   "opening": "hi, I need a birthday gift for my mum", "max_turns": 6, "goal_items": [],
+   "expected": {}},
+  {"id": "persona-002-japan-esim", "priority": "critical", "tags": ["persona", "conversion"],
+   "persona": "You fly to Tokyo for 6 days next week and need mobile data there. You want the Japan eSIM and you are open to one day tour.",
+   "opening": "I'm going to Tokyo next week, need data", "max_turns": 6, "goal_items": ["japan esim"],
+   "expected": {}},
+  {"id": "persona-003-tee-m", "priority": "critical", "tags": ["persona", "conversion"],
+   "persona": "You want the store's logo t-shirt in size M for yourself. Nothing else.",
+   "opening": "do you have t-shirts?", "max_turns": 5, "goal_items": ["logo tee - m"],
+   "expected": {}},
+  {"id": "persona-004-phone-plan", "priority": "high", "tags": ["persona", "conversion"],
+   "persona": "You want a monthly mobile plan. You stream video a lot on your commute, so you want plenty of data. You pick the plan that fits.",
+   "opening": "what phone plans do you have?", "max_turns": 5, "goal_items": ["plus 100gb"],
+   "expected": {}},
+  {"id": "persona-005-family-night", "priority": "high", "tags": ["persona", "conversion"],
+   "persona": "You want something fun for a family night in with two kids aged 8 and 11, under 70 SGD. You buy one thing.",
+   "opening": "ideas for a family games night?", "max_turns": 6, "goal_items": [],
+   "expected": {}}
+]

@@ -1,0 +1,15 @@
+[
+  {"id": "qa-001-tee-sizes", "priority": "high", "tags": ["product"],
+   "turns": ["What sizes does the iKnowledge Logo Tee come in?"],
+   "expected": {"calls_one_of": ["get_product_details", "search_products"],
+     "rubric": "PASS if the reply gives the tee's sizes as the tool results show them (S and M can be added; L is listed but may be unavailable) without inventing other sizes such as XL. FAIL if it names a size the results do not have."}},
+  {"id": "qa-002-tour-details", "priority": "medium", "tags": ["product"],
+   "turns": ["Does the Mt Fuji day trip include lunch?"],
+   "expected": {"rubric": "PASS if the reply says lunch is included (the product description reads 'Guided coach tour with lunch'). FAIL if it says lunch is not included or that it does not know."}},
+  {"id": "qa-003-esim-data", "priority": "medium", "tags": ["product"],
+   "turns": ["How much data does the Korea eSIM have and for how many days?"],
+   "expected": {"reply_includes": ["5"], "rubric": "PASS if the reply says 5GB for 5 days. FAIL if it gives other figures."}},
+  {"id": "qa-004-unknown-id", "priority": "medium", "tags": ["product", "negative"],
+   "turns": ["Tell me about gid://shopify/Product/1"],
+   "expected": {"reply_omits": ["temporarily unavailable", "isn't working", "not working right now"]}}
+]
