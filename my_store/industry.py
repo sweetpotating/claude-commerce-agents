@@ -24,6 +24,8 @@ from commerce_common.presentation import EnrichmentContext, PresentationExtensio
 from pydantic import BaseModel, Field
 from shopping_agent import ShoppingAgentConfig, ShoppingSessionState
 
+from .compare import COMPARE_NOTES
+
 _DEFAULTS = ShoppingAgentConfig()
 
 # Policy vocabulary from the travel, telecom, and ticketing configs: a question using any
@@ -116,18 +118,7 @@ DISCOVERY_NOTES = (
     "present_products, never a text-only reply. Write any budget or price in a "
     "chip in the catalog's currency, as the results show it. Product "
     "cards have their own Choose options, Add to cart, and Checkout buttons, so the "
-    "shopper can buy straight from a card; you do not need to ask before they tap. "
-    "Comparisons run at once: a request to compare that names nothing ('compare two "
-    "tours') compares the two or three strongest candidates from this session's latest "
-    "results in present_comparison without asking which; a request that names things "
-    "('Mt Fuji vs Kuala Lumpur') searches each by its key word ('Fuji', 'Kuala Lumpur') "
-    "when it has not been shown, then compares the best match for each. Compare on the "
-    "facts each product's attributes state (data, validity, nights, duration, inclusions, "
-    "group size, cancellation, price per day or night); the card shows them side by side, so "
-    "name the differences that decide the choice, and never compare on a fact no product "
-    "states. Products from different countries or categories can be compared. A comparison "
-    "chip names its items ('Compare Mt Fuji and Phuket tours'), never just 'Compare two "
-    "tours'."
+    "shopper can buy straight from a card; you do not need to ask before they tap."
 )
 
 # Where a shopper reaches a person. The store's contact FAQ gives the same address.
@@ -153,7 +144,12 @@ def industry_config_overrides() -> dict[str, Any]:
     return {
         "brand_voice": BRAND_VOICE,
         "domain_search_notes": " ".join(
-            (os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES), DISCOVERY_NOTES, HANDOFF_NOTES)
+            (
+                os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES),
+                DISCOVERY_NOTES,
+                COMPARE_NOTES,
+                HANDOFF_NOTES,
+            )
         ),
         # Plan comparisons need every tier in one search (the telecom demo's setting).
         "max_search_results": 25,

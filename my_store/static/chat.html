@@ -510,27 +510,34 @@
     return box;
   }
 
-  // Side by side, every fact the store's data states for these products (facts.py): data,
-  // validity, nights, duration, inclusions, group size, terms, price per day. A fact only
-  // one product states still gets a row, with "—" for the others, so gaps are visible.
+  // Side by side, one row per dimension and a value in every cell. The host fills the cells
+  // from the store's data (compare.py: price, availability, options, and the facts facts.py
+  // reads), so a fact only one product states shows "—" for the others and gaps are visible.
+  // A payload without cells (an older host) falls back to the products' own attributes.
   const HIDDEN_FACTS = new Set(["product_url", "image_urls"]);
-  function factsTable(products) {
+  function factsTable(entries, dims) {
+    const products = entries.map((e) => e.product);
     if (products.length < 2) return null;
-    const labels = [...new Set(products.flatMap((pr) => Object.keys(pr.attributes || {})))].filter((k) => !HIDDEN_FACTS.has(k));
-    if (!labels.length) return null;
+    let rows = dims || [];
+    let cell = (i, k) => String((entries[i].values || {})[k] ?? "—");
+    if (!rows.length || !entries.every((e) => e.values)) {
+      rows = ["Price", ...new Set(products.flatMap((pr) => Object.keys(pr.attributes || {})))].filter((k) => !HIDDEN_FACTS.has(k));
+      cell = (i, k) => k === "Price"
+        ? (products[i].price != null ? money(products[i].price, products[i].currency) : "—")
+        : String((products[i].attributes || {})[k] ?? "—");
+    }
+    if (rows.length < 1) return null;
     const wrap = el("div", "matrix-wrap");
     const table = el("table", "matrix");
     const head = el("tr"); head.appendChild(el("th"));
     products.forEach((pr) => head.appendChild(el("th", null, pr.title)));
     const thead = el("thead"); thead.appendChild(head); table.appendChild(thead);
     const tbody = el("tbody");
-    const addRow = (label, cells) => {
-      const tr = el("tr"); tr.appendChild(el("th", null, label));
-      cells.forEach((c) => tr.appendChild(el("td", null, c)));
+    rows.forEach((k) => {
+      const tr = el("tr"); tr.appendChild(el("th", null, k));
+      products.forEach((_, i) => tr.appendChild(el("td", null, cell(i, k))));
       tbody.appendChild(tr);
-    };
-    addRow("Price", products.map((pr) => (pr.price != null ? money(pr.price, pr.currency) : "—")));
-    labels.forEach((k) => addRow(k, products.map((pr) => String((pr.attributes || {})[k] ?? "—"))));
+    });
     table.appendChild(tbody); wrap.appendChild(table);
     return wrap;
   }
@@ -538,7 +545,6 @@
   function comparisonCard(p) {
     const wrap = el("div");
     if (p.title) wrap.appendChild(el("div", "card-title", p.title));
-    if (p.dimensions && p.dimensions.length) wrap.appendChild(el("p", "intro", "Comparing " + p.dimensions.join(", ")));
     const row = el("div", (p.entries || []).length > 3 ? "compare many" : "compare");
     (p.entries || []).forEach((e) => {
       if (!e.product) return;
@@ -558,7 +564,7 @@
       row.appendChild(card);
     });
     wrap.appendChild(row);
-    const facts = factsTable((p.entries || []).map((e) => e.product).filter(Boolean));
+    const facts = factsTable((p.entries || []).filter((e) => e.product), p.dimensions);
     if (facts) wrap.appendChild(facts);
     const d = p.price_delta;
     if (d && d.amount) wrap.appendChild(el("p", "note", `Price difference: ${money(d.amount, (p.entries[0] && p.entries[0].product && p.entries[0].product.currency) || undefined)}`));

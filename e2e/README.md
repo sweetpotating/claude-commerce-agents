@@ -7,7 +7,7 @@ shopper message is matched to a scripted policy that reads the live tool results
 turn, so the ids it adds or compares are the store's real ids.
 
 ```bash
-python -m e2e.run_api                         # 13 flows over /api/chat, in-process
+python -m e2e.run_api                         # 17 flows over /api/chat, in-process
 python -m scripts.e2e_server &                # the app on :8000, scripted model
 node e2e/shopper.js "$(npm root -g)" docs/uat/e2e   # Chromium at phone width, screenshots
 NO_MODEL=1 scripts/loop.sh                    # lint, tests, smoke, both of the above
@@ -24,7 +24,11 @@ call fail like an out-of-credit account, to check the no-model fallback.
 | Cart by chat: add variant, change qty, remove; cap of 8 | yes | |
 | Add to cart from a card; checkout bar | | yes |
 | Unseen product id refused (provenance gate) | yes | |
-| Compare across countries with a facts table | yes | yes |
+| Compare across countries: a value in every cell, a sentence with the card | yes | yes |
+| "Compare these two" = the products last shown | yes | yes |
+| "Difference between X and Y" -> a comparison card | yes | |
+| "Compare this with the mug" on a product page | yes | |
+| A comparison with an unseen id is refused, then retried | yes | |
 | Plan table (telecom), itinerary (travel) | yes | yes |
 | Policy from the store's FAQ; human handoff (mailto) | yes | yes |
 | Memory; checkout with a cart and with none | yes | |

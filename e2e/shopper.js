@@ -57,7 +57,17 @@ fs.mkdirSync(out, { recursive: true });
   await say("compare japan and malaysia trips");
   const rows = await page.$$eval("table.matrix tbody tr th", (n) => n.map((x) => x.textContent));
   check("comparison card with a facts table", rows.includes("Duration") && rows.includes("Price"), rows.join(", "));
+  const cells = await page.$$eval("table.matrix", (t) => [...t[t.length - 1].querySelectorAll("td")].map((c) => c.textContent.trim()));
+  check("every cell of the table has a value", cells.length >= 4 && cells.every((c) => c.length > 0), `${cells.length} cells`);
+  check("a sentence comes with the comparison card", /less than|differ/.test(await page.$$eval(".msg.bot", (n) => n[n.length - 1].textContent)));
   await shot("3-compare");
+
+  // 4b. "Compare these two": the products the last reply showed, not a new search.
+  await say("Gift ideas for my sister");
+  const shownNow = await page.$$eval(".product .name", (n) => n.slice(-3).map((x) => x.textContent));
+  await say("compare these two");
+  const heads = await page.$$eval("table.matrix", (t) => [...t[t.length - 1].querySelectorAll("thead th")].map((c) => c.textContent).filter(Boolean));
+  check("'compare these two' compares the products just shown", heads.length === 2 && heads.every((h) => shownNow.includes(h)), heads.join(" vs "));
 
   // 5. Plan table (telecom).
   await say("compare your mobile plans");

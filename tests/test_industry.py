@@ -140,7 +140,7 @@ def test_the_agent_recommends_before_asking():
 
 def test_comparisons_run_without_asking_which():
     notes = shopify_agent_config(**industry_config_overrides()).domain_search_notes
-    assert "without asking which" in notes and "searches each by its key word" in notes
+    assert "without asking which" in notes and "one search per item" in notes
 
 
 async def test_chat_stream_sends_keepalives_while_a_turn_is_quiet(monkeypatch):

@@ -26,8 +26,9 @@ FENCE = re.compile(r"<storefront_data>\s*(.*?)\s*</storefront_data>", re.S)
 class Turn:
     """What a policy sees: the shopper's message and this turn's tool results so far."""
 
-    def __init__(self, messages: list[dict]) -> None:
+    def __init__(self, messages: list[dict], system: Any = None) -> None:
         self.user = ""
+        self.context = _session_context(system)  # the host's per-turn session context
         self.results: list[tuple[str, str]] = []  # (tool name, result text), this turn only
         names: dict[str, str] = {}
         start = 0
@@ -76,6 +77,19 @@ class Turn:
 
 
 Policy = Callable[[Turn], Any]
+
+
+def _session_context(system: Any) -> dict:
+    blocks = system if isinstance(system, list) else [{"text": system or ""}]
+    for block in blocks:
+        text = block.get("text", "") if isinstance(block, dict) else ""
+        if "# Session context" in text and (m := FENCE.search(text)):
+            return json.loads(m.group(1))
+    return {}
+
+
+def page_extra(t: Turn) -> dict:
+    return (t.context.get("current_page") or {}).get("extra") or {}
 
 
 def chips(*labels: str) -> tuple[str, dict]:
@@ -171,6 +185,69 @@ def compare_places(t: Turn):
     )
 
 
+def compare_shown(t: Turn):
+    """'Compare these two': the two products the last reply showed, no search, no text (the
+    host adds the summary line)."""
+    ids = [p["product_id"] for p in page_extra(t).get("last_shown", [])[:2]]
+    return tool_calls_message(
+        ("present_comparison", {"entries": [{"product_id": i} for i in ids]}), chips("Show more gifts")
+    )
+
+
+def difference(t: Turn):
+    """'Difference between X and Y' answered with present_products, as the model did live:
+    the host shows it as a comparison."""
+    if not t.called("search_products"):
+        return tool_calls_message(
+            ("search_products", {"query": "Fuji"}), ("search_products", {"query": "Kuala Lumpur"})
+        )
+    found = [
+        p
+        for _, text in t.results
+        if (m := FENCE.search(text))
+        for p in json.loads(m.group(1)).get("results", [])
+    ]
+    fuji = next(p for p in found if "fuji" in p["title"].lower())
+    kl = next(p for p in found if "kuala lumpur" in p["title"].lower())
+    return tool_calls_message(
+        (
+            "present_products",
+            {"picks": [{"product_id": fuji["product_id"]}, {"product_id": kl["product_id"]}]},
+        ),
+        chips(f"Add {kl['title']}"),
+    )
+
+
+def compare_this_with_mug(t: Turn):
+    """'Compare this with the mug' on a product page: 'this' is the page's product."""
+    viewing = page_extra(t).get("viewing") or {}
+    if not t.called("search_products"):
+        return tool_calls_message(("search_products", {"query": "mug"}))
+    mug = t.find("mug")
+    entries = [{"product_id": viewing["product_id"]}, {"product_id": mug["product_id"]}]
+    return tool_calls_message(
+        ("present_comparison", {"entries": entries, "dimensions": ["Price", "Delivery"]}),
+        chips(f"Add {mug['title']}"),
+    )
+
+
+def compare_ghost(t: Turn):
+    """A third id never returned by a tool: the call is refused, then retried grounded."""
+    if not t.called("search_products"):
+        return tool_calls_message(("search_products", {"query": "streaming"}))
+    found = [p["product_id"] for p in t.products()[:2]]
+    tries = [n for n, _ in t.results if n == "present_comparison"]
+    if not tries:
+        ids = [*found, "gid://shopify/Product/999999"]
+        return tool_calls_message(("present_comparison", {"entries": [{"product_id": i} for i in ids]}))
+    if len(tries) == 1:
+        return tool_calls_message(
+            ("present_comparison", {"entries": [{"product_id": i} for i in found]}),
+            chips("Show more streaming cards"),
+        )
+    return text_message("Those two side by side.")
+
+
 def compare_plans(t: Turn):
     if not t.called("search_products"):
         return tool_calls_message(("search_products", {"query": "plan"}))
@@ -250,6 +327,10 @@ SCENARIOS: list[tuple[str, Policy]] = [
     (r"add the japan esim", add_by_name("japan esim", "Japan eSIM")),
     (r"make it 2 mugs", cart_edit("update_cart_item", "mug", 2)),
     (r"remove the esim", cart_edit("remove_from_cart", "esim")),
+    (r"compare (these|them)", compare_shown),
+    (r"difference between", difference),
+    (r"compare this with the mug", compare_this_with_mug),
+    (r"compare three streaming cards", compare_ghost),
     (r"compare .*japan.*malaysia|fuji vs", compare_places),
     (r"compare .*plans", compare_plans),
     (r"itinerary|plan a .*trip", itinerary),
@@ -283,7 +364,7 @@ class ScriptedClient:
                 response=httpx.Response(400, request=request),
                 body=None,
             )
-        turn = Turn(kwargs["messages"])
+        turn = Turn(kwargs["messages"], kwargs.get("system"))
         for pattern, policy in SCENARIOS:
             if re.search(pattern, turn.user, re.IGNORECASE):
                 step = policy(turn)

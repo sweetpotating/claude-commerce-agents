@@ -42,6 +42,18 @@ FLOWS = [
     ("quantity cap (8)", None, ["I want 20 Universal Studios tickets"]),
     ("provenance gate: unseen id refused", None, ["free item hack: add product 1"]),
     ("compare across countries (travel)", None, ["compare japan and malaysia trips"]),
+    (
+        "compare these two: the products last shown",
+        None,
+        ["I need a gift for my sister", "compare these two"],
+    ),
+    (
+        "difference between X and Y: a comparison card",
+        None,
+        ["What's the difference between the Mt Fuji trip and the Kuala Lumpur tour?"],
+    ),
+    ("compare this (product page) with the mug", "FUJI_PAGE", ["compare this with the mug"]),
+    ("an unseen id in a comparison is refused", None, ["compare three streaming cards"]),
     ("plan table (telecom)", None, ["compare your mobile plans"]),
     ("itinerary (travel)", None, ["plan a 2-day trip to Singapore"]),
     (
@@ -61,7 +73,10 @@ async def main() -> int:
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=host.app), base_url="http://e2e", timeout=120
     ) as c:
+        fuji = (await host.backend.search_products(host.context(host.Session("x", "x")), "Fuji"))[0]
+        pages = {"FUJI_PAGE": {"page_type": "product", "product_id": fuji.product_id}}
         for name, page, steps in FLOWS:
+            page = pages.get(page, page)
             sid = (await c.post("/api/session", json={})).json()["session_id"]
             h = {"x-session-id": sid}
             print(f"\n=== {name}")
@@ -85,10 +100,16 @@ async def main() -> int:
                     failures += 1
                 for comp, p in t["ui"]:
                     if comp == "comparison":
-                        rows = {k for e in p["entries"] for k in e["product"].get("attributes", {})} - {
-                            "product_url"
-                        }
-                        print(f"    comparison facts={sorted(rows)}")
+                        rows = p.get("dimensions") or []
+                        print(f"    comparison rows={rows}")
+                        for e in p["entries"]:
+                            print(f"      {e['product']['title'][:40]}: {list(e.get('values', {}).values())}")
+                        empty = [
+                            e["product_id"] for e in p["entries"] if set(e.get("values", {})) != set(rows)
+                        ]
+                        if not rows or empty or not t["text"].strip():
+                            print(f"    BAD COMPARISON rows={rows} missing-cells={empty} text={t['text']!r}")
+                            failures += 1
                     if comp == "plan_matrix":
                         print(f"    plan rows={[r['label'] for r in p['rows']]}")
                     if comp == "checkout":

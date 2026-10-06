@@ -155,6 +155,26 @@ Fixed along the way:
 - The comparison row was a horizontal scroller with one card visible at phone width. It is
   now a two-column grid, and only 4 or more entries scroll.
 
+#### i16: the compare deep-dive (items 13-19), fixed in `my_store/compare.py`, 2026-10-06
+
+| # | Finding | Fix | Checked by |
+|---|---|---|---|
+| 13 | Table headers with no cells | Each entry carries `values`, one cell per dimension. The store's facts (price, availability, rating, options, `facts.py` attributes) come first, then the model's `values`, then "—". `dimensions` is the final row order, and a row nobody states is dropped. | `test_every_entry_has_a_value_for_every_dimension`; walk: "every cell of the table has a value" |
+| 14 | First `ui_partial` had `entries: []` | No frame until 2 entries resolve to products | `test_no_streamed_frame_before_two_entries` |
+| 15 | "Compare these two" compared the wrong pair, and came back as a card with no text | The host passes the last reply's products as `current_page.extra.last_shown`. A references-only compare is not forced into a search. A card with no text gets a host summary from the table (price gap, the facts that differ), placed before the chips. | test + API flow + walk |
+| 16 | "This" ignored on a product page | The page product goes in `current_page.extra.viewing` (id, title, price) | `test_this_means_the_product_page_open`; API flow |
+| 17 | Ungrounded ids | Any id outside this session's results refuses the whole call and names the id (the old behaviour dropped it silently) | `test_an_unseen_id_refuses_the_comparison`; API flow |
+| 18 | "Difference between" rendered as product cards | When the shopper asks to compare, a `present_products` of 2-4 picks is shown as a comparison. The prompt and tool description also route there. | `test_difference_between_routes_to_the_comparison_card`; API flow |
+| 19 | Unrelated items offered in place of a missing one | Prompt: offer same-kind products only, else say there is nothing close to compare | `test_prompt_says_no_unrelated_comparator` (prompt only: what the model does needs the evals) |
+
+`NO_MODEL=1 scripts/loop.sh`:
+
+- 100 unit tests pass.
+- 17 API flows run with 0 errors.
+- The Chromium walk passes **22/22**.
+
+Items 15, 18 and 19 also depend on what the model chooses. The host fallbacks cover 15 and 18; re-run the compare evals once API credit is topped up.
+
 ## Findings and fixes
 
 1. **Every physical product was "sold out" at the cart (fixed by configuration).**

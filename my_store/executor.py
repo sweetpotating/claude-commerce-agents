@@ -10,6 +10,9 @@ runtime's ``executor_class`` seam (my_store/app.py). Each rule fixes a failure s
 - Cart lines count as seen. A product added by its product id sits in the cart as its
   variant id; that id (in the cart panel and the session context) is now a valid id to add
   again, like the ids search_products and get_product_details return.
+- A comparison request is answered with a comparison. Live, "difference between X and Y"
+  came back as product cards; present_products of 2-4 picks in a turn that asked to
+  compare is shown as present_comparison (compare.py).
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from commerce_common.streaming import ToolOutcome
 from shopping_agent import Product
 from shopping_agent.executor import ShoppingToolExecutor
 
+from . import compare
 from .shopify_backend import CartRefused, ShopifyError
 
 SEARCH_FIRST = (
@@ -54,6 +58,8 @@ class StoreToolExecutor(ShoppingToolExecutor):
             if name == "add_to_cart" and "search_products" in round_calls:
                 return ToolOutcome.error(SEARCH_FIRST)
             round_calls.append(name)
+            if name == "present_products" and (as_table := compare.as_comparison(self._state, tool_input)):
+                name, tool_input = compare.TOOL, as_table
             outcome = await ShoppingToolExecutor.execute(self, name, tool_input)
             self._remember_cart_lines(outcome)
             return outcome

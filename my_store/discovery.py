@@ -17,6 +17,8 @@ from commerce_common.grounding import GroundingRule
 from shopping_agent import ShoppingSessionState
 from shopping_agent.grounding import GROUNDING_RULES
 
+from . import compare
+
 # Words that mark a request to find, choose, or plan something.
 SHOPPING_CUES = (
     "need",
@@ -134,6 +136,11 @@ _ANSWER_CHIP = re.compile(
 
 
 def _discovery(config: Any, text: str, state: ShoppingSessionState) -> dict[str, Any] | None:
+    # "Compare these two" names nothing new: a forced search would find a different pair
+    # (live, it compared the wrong products). The model compares what it last showed.
+    if compare.refers_to_shown(text):
+        _chip_turns.discard(id(state))
+        return None
     if id(state) in _chip_turns:
         _chip_turns.discard(id(state))
         if _ANSWER_CHIP.match(text):
@@ -158,9 +165,9 @@ _PRODUCT_PATHS = {
 STARTER_CHIPS = ("Show me your best picks", "Plan a 2-day trip", "Gift ideas", "Compare your plans")
 
 
-def product_titles(component: str, payload: dict[str, Any]) -> list[str]:
-    """Titles of the products a rendered component showed, in display order."""
-    titles: list[str] = []
+def product_records(component: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """The product records a rendered component showed, in display order."""
+    records: list[dict[str, Any]] = []
     for list_key, inner in _PRODUCT_PATHS.get(component, []):
         for entry in payload.get(list_key) or []:
             if not isinstance(entry, dict):
@@ -168,8 +175,13 @@ def product_titles(component: str, payload: dict[str, Any]) -> list[str]:
             found = entry.get(inner) if inner else entry
             for record in found if isinstance(found, list) else [found]:
                 if isinstance(record, dict) and record.get("title"):
-                    titles.append(record["title"])
-    return titles
+                    records.append(record)
+    return records
+
+
+def product_titles(component: str, payload: dict[str, Any]) -> list[str]:
+    """Titles of the products a rendered component showed, in display order."""
+    return [record["title"] for record in product_records(component, payload)]
 
 
 def _short(title: str) -> str:

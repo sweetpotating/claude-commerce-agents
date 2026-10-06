@@ -41,7 +41,7 @@ from shopping_agent import (
 from shopping_agent.serialization import cart_payload
 from shopping_agent_runtime import ShoppingAgent
 
-from . import discovery, fallback, guards
+from . import compare, discovery, fallback, guards
 from .backend import MyStoreBackend
 from .executor import StoreToolExecutor
 from .funnel import CLIENT_EVENTS, PRODUCT_COMPONENTS, funnel
@@ -74,6 +74,8 @@ else:
     )
 # A shopping request's first round is a product search, before any question (discovery.py).
 discovery.install()
+# Comparisons with a value in every cell, grounded ids only, no empty first frame (compare.py).
+compare.install()
 agent = ShoppingAgent(
     backend=backend,
     skills_dir=SKILLS_DIR,
@@ -85,6 +87,7 @@ agent = ShoppingAgent(
     # own error text, cart lines count as seen (executor.py).
     executor_class=StoreToolExecutor,
 )
+compare.install_tool(agent)
 
 
 @dataclass
@@ -94,6 +97,8 @@ class Session:
     messages: list[dict[str, Any]] = field(default_factory=list)
     state: ShoppingSessionState = field(default_factory=ShoppingSessionState)
     pending_app_events: list[str] = field(default_factory=list)
+    # The products the last reply showed: what "these two" and "them" mean (compare.py).
+    last_shown: list[dict[str, Any]] = field(default_factory=list)
     turns: int = 0
     last_seen: float = field(default_factory=time.monotonic)
 
@@ -257,7 +262,11 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     else:
         s.messages.append({"role": "user", "content": body.message})
     ctx = context(s, body.page)
-    await remember_page_product(s, body.page)
+    viewing = await remember_page_product(s, body.page)
+    # "This" is the product page open, "these" the products last shown: said in the session
+    # context, so "compare this with the mug" or "compare these two" needs no question.
+    ctx.page.extra = {**ctx.page.extra, **compare.context_extra(viewing, s.last_shown)}
+    compare.note_turn(s.state, body.message)
     chip = body.source == "chip"
     if chip:
         discovery.chip_tapped(s.state)
@@ -270,6 +279,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         # A tapped chip always leads to products: when its reply showed none, the host adds
         # the closest ones found, above the chips (which it holds back until then).
         has_chips, titles, held, outage = False, [], [], False
+        said, compared, last_records = False, None, []
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
@@ -284,11 +294,18 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                         funnel.record(s.session_id, "products_shown", source=shown)
                     elif shown == "checkout":
                         funnel.record(s.session_id, "checkout_shown", source="chat")
+                said |= event.type == "text_delta" and bool((event.data.get("text") or "").strip())
                 if event.type == "ui":
                     component, payload = event.data.get("component"), event.data.get("payload") or {}
                     has_chips |= component == "suggestions"
+                    if component == "comparison":
+                        compared = payload
+                    if records := discovery.product_records(component, payload):
+                        last_records = records
                     titles += discovery.product_titles(component, payload)
-                    if search_chip and component == "suggestions":
+                    # Chips wait for the cards a chip turn may add, or for the line a bare
+                    # comparison gets, so they stay last.
+                    if component == "suggestions" and (search_chip or (compared and not said)):
                         held.append(event)
                         continue
                 yield to_sse(event)
@@ -320,6 +337,14 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
             if cards:
                 titles += [item["product"]["title"] for item in cards["items"]]
                 yield to_sse(AgentEvent.ui("products", cards))
+        if compared and not said and not failed:  # never a comparison card with no words
+            yield to_sse(AgentEvent.text_delta(compare.summary(compared)))
+        if last_records:
+            s.last_shown = [
+                {"product_id": r["product_id"], "title": r["title"]}
+                for r in last_records[:4]
+                if r.get("product_id")
+            ]
         for event in held:
             yield to_sse(event)
         if not has_chips and not outage:  # during an outage a chip would only fail again
