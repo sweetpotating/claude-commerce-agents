@@ -18,7 +18,7 @@ merchant agents). The owner is connecting the shopping agent to their own Shopif
 - `my_store/app.py`: FastAPI host; `STORE_BACKEND=shopify` selects the Shopify backend. `GET /`
   serves `my_store/static/chat.html`, a browser chat over the API. `executor.py` (cart rules),
   `discovery.py` (products first, chips), `compare.py` (comparison table cells,
-  grounded ids, "this"/"these"), `funnel.py` (live conversion funnel, `/api/metrics`).
+  grounded ids, "this"/"these"), `chips.py` (chips checked against catalog and cart), `textflow.py`, `funnel.py` (live conversion funnel, `/api/metrics`).
 - `evals/`: the eval suite on the live store (`python -m evals.runner`, `evals/README.md`);
   `scripts/loop.sh` runs lint -> tests -> smoke -> e2e -> evals. `e2e/`: every key flow with a
   scripted model, no API credit (`NO_MODEL=1 scripts/loop.sh`, `e2e/README.md`). `docs/COMPARISON.md`: vs Shopify Inbox.

@@ -65,7 +65,64 @@ FLOWS = [
     ("memory", None, ["remember I am vegetarian"]),
     ("checkout via chat", None, ["Add a Bookworm mug", "I'm ready to check out"]),
     ("checkout with an empty cart", None, ["check out"]),
+    # The search, cart, and chip-crawl evals (items 20-34): (name, page, steps, check).
+    (
+        "most expensive ranks the whole catalog",
+        None,
+        ["what is your most expensive item?"],
+        lambda t, idx: (
+            None
+            if products_in(t) and products_in(t)[0]["price"] == max(p.price for p in idx)
+            else f"top was {products_in(t)[:1]}"
+        ),
+    ),
+    (
+        "hotels are found, not denied",
+        None,
+        ["do you have any hotels?"],
+        lambda t, idx: (
+            None
+            if any(w in p["title"] for p in products_in(t) for w in ("Hotel", "Villa"))
+            else "no hotel shown"
+        ),
+    ),
+    (
+        "repeated text dropped, bad chips filtered",
+        None,
+        ["show me the mug again"],
+        lambda t, idx: (
+            "text repeated"
+            if t["text"].count("Let me look") != 1
+            else "no paragraph break"
+            if "\n\nHere is the mug" not in t["text"]
+            else f"bad chips {chips_of(t)}"
+            if any(w in " ".join(chips_of(t)) for w in ("Notify", "drone", "Wishlist"))
+            else None
+        ),
+    ),
+    (
+        "a quantity change reads the cart first",
+        None,
+        ["Add a Bookworm mug", "change the mug to 3"],
+        lambda t, idx: (
+            None
+            if t["cart"]
+            and any(i["quantity"] == 3 for i in t["cart"]["items"])
+            and "not forced" not in t["text"]
+            else f"cart {t['cart'] and t['cart']['items']} text {t['text']!r}"
+        ),
+    ),
+    (
+        "empty and blank messages",
+        None,
+        ["", "   "],
+        lambda t, idx: None if "What can I help" in t["text"] else t["text"],
+    ),
 ]
+
+
+def chips_of(t: dict) -> list[str]:
+    return [c for comp, p in t["ui"] if comp == "suggestions" for c in p.get("suggestions", [])]
 
 
 async def main() -> int:
@@ -73,9 +130,10 @@ async def main() -> int:
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=host.app), base_url="http://e2e", timeout=120
     ) as c:
+        index = await host.refresh_catalog()  # as at boot: vocabulary, starters, collections
         fuji = (await host.backend.search_products(host.context(host.Session("x", "x")), "Fuji"))[0]
         pages = {"FUJI_PAGE": {"page_type": "product", "product_id": fuji.product_id}}
-        for name, page, steps in FLOWS:
+        for name, page, steps, *expect in FLOWS:
             page = pages.get(page, page)
             sid = (await c.post("/api/session", json={})).json()["session_id"]
             h = {"x-session-id": sid}
@@ -115,7 +173,10 @@ async def main() -> int:
                     if comp == "checkout":
                         print(f"    handoff={[x['url'][:50] for x in p.get('handoffs', [])]}")
                 if t["text"]:
-                    print(f"    text: {t['text'][:150]}")
+                    print(f"    text: {t['text'][:150]!r}")
+                if expect and step == steps[-1] and (problem := expect[0](t, index)):
+                    print(f"    EXPECTATION FAILED: {problem}")
+                    failures += 1
     print(f"\nmodel calls (scripted, no API): {len(host.agent.client.calls)}; flows with errors: {failures}")
     return 1 if failures else 0
 

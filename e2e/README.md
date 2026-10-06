@@ -7,7 +7,7 @@ shopper message is matched to a scripted policy that reads the live tool results
 turn, so the ids it adds or compares are the store's real ids.
 
 ```bash
-python -m e2e.run_api                         # 17 flows over /api/chat, in-process
+python -m e2e.run_api                         # 22 flows over /api/chat, in-process
 python -m scripts.e2e_server &                # the app on :8000, scripted model
 node e2e/shopper.js "$(npm root -g)" docs/uat/e2e   # Chromium at phone width, screenshots
 NO_MODEL=1 scripts/loop.sh                    # lint, tests, smoke, both of the above
@@ -35,4 +35,7 @@ call fail like an out-of-credit account, to check the no-model fallback.
 | Shopify checkout link | yes | yes |
 | Dropped connection: plain message, Try again resends | | yes |
 | Model outage: store products, add to cart, FAQ answer | | yes |
+| Most expensive = whole catalog; hotels found; repeated text dropped | yes | |
+| Chips filtered (no notify/wishlist/nonexistent products); cart change reads the cart | yes | |
+| Empty and blank messages get a prompt; opening chips are the store's collections | yes | yes |
 | No raw JSON, no sideways scroll, no page errors | | yes |

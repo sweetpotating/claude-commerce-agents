@@ -66,7 +66,22 @@ with `SHOPIFY_STORE_DOMAIN` set to the trial store and point that store's script
 | `METRICS_TOKEN` | (unset) | set it to read the conversion funnel at `/api/metrics?token=...`; unset, that page does not exist |
 | `CHECKOUT_UTM_SOURCE` | (unset) | e.g. `assistant`: tags checkout links so Shopify's reports show orders that came through the chat |
 | `STORE_CONTACT_EMAIL` | tanyueting96@gmail.com | where the assistant sends shoppers who ask for a person |
+| `LOAD_TEST_TOKEN` | (unset) | for eval crawls and load tests from one machine: requests sending the same value in an `X-Load-Test-Token` header skip the per-IP limits above (`CHAT_PER_MINUTE`, `SESSIONS_PER_HOUR`, `TURNS_PER_IP_PER_DAY`); the daily turn and token budgets still apply. Unset it after testing |
+| `CATALOG_WARMUP` | 1 | read the whole catalog (a few Shopify calls) at boot and hourly: opening chips from collections, "what do you sell", price rankings, and search answers while Shopify's search fails |
 | `WIDGET_SHOPS` | `SHOPIFY_STORE_DOMAIN` | myshopify domains where the chat bubble shows (comma-separated); on any other store, a trial store for example, it stays hidden |
+
+## Is it healthy?
+
+`GET /healthz` shows the deployed commit (`commit`, from Render's `RENDER_GIT_COMMIT`) and
+the store's health: `degraded` (several catalog calls failed lately and none worked since),
+`failures_last_5m`, `last_error`, `catalog_products`, and `buyer_country` (should be `SG`
+for iKnowledge; anything else means shipped items get refused). Render's logs show each
+Shopify retry as `shopify HTTP 429, retry n` (430 is Shopify's bot protection), and each
+search answered from the catalog index while Shopify fails.
+
+A burst from one IP hits this server's own per-IP limits first: the 21st new chat in an
+hour gets "Too many new chats from your connection" (HTTP 429). For a crawl, set
+`LOAD_TEST_TOKEN` and send it as `X-Load-Test-Token`.
 
 ## Known limits of this first launch
 

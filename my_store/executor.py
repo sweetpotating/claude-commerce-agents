@@ -13,10 +13,18 @@ runtime's ``executor_class`` seam (my_store/app.py). Each rule fixes a failure s
 - A comparison request is answered with a comparison. Live, "difference between X and Y"
   came back as product cards; present_products of 2-4 picks in a turn that asked to
   compare is shown as present_comparison (compare.py).
+- An add that could mean two products asks first. Live, "add 2 of the notebook" with two
+  notebooks in the results added one silently; when the shopper's words fit two products
+  of this turn's search equally well, the add is refused once with both names.
+- No tool error reaches the model empty. Live, a cart failure came back with no text and
+  the model guessed "sold out"; timeouts and anything unexpected now say what happened.
 """
 
 from __future__ import annotations
 
+import json
+import logging
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -43,10 +51,54 @@ STORE_ERROR = (
     "offer another step; do not say the cart or a tool is broken."
 )
 
+STORE_TIMEOUT = (
+    "The store did not answer in time ({detail}). Tell the customer the store is slow right "
+    "now and offer to try again in a moment; do not say the item is unavailable."
+)
+AMBIGUOUS_ADD = (
+    "Not added yet: '{words}' fits more than one product: {names}. Show them with "
+    "present_products and ask the customer which one they mean; add it once they choose."
+)
+
 Execute = Callable[[str, dict[str, Any] | None], Awaitable[ToolOutcome]]
+logger = logging.getLogger(__name__)
+_FENCE = re.compile(r"<storefront_data>\s*(.*?)\s*</storefront_data>", re.S)
+_NOT_NAMES = frozenset(
+    "add adding want need like please could would some more also them those these that this "
+    "with without from into the and for one two three four five six seven eight nine ten "
+    "cart basket item items product products piece pieces of can you get buy any all our new "
+    "too now pls just".split()
+)
+# Per chat (keyed by its state object), this turn's words and what its searches found.
+_turns: dict[int, dict[str, Any]] = {}
+
+
+def note_turn(state: Any, text: str) -> None:
+    """Called by the host at the start of each turn with the shopper's message."""
+    _turns[id(state)] = {"text": text, "found": {}, "asked": False}
+    compare.note_turn(state, text)
+    if len(_turns) > 5000:  # forget old chats
+        for key in list(_turns)[:1000]:
+            del _turns[key]
+
+
+def _words(text: str) -> set[str]:
+    """Words that can tell products apart: names, sizes, numbers in titles ('7 Days 10GB'),
+    but not a quantity ('add 2 of the notebook')."""
+    text = re.sub(r"\b(add|want|get|buy|need|take|order)\s+\d+\b", r"\1", text.lower())
+    text = re.sub(r"\b\d+\s*(x|of|pcs|pieces)\b", " ", text)
+    words = {
+        w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w
+        for w in re.findall(r"[a-z0-9]+", text)
+    }
+    return {w for w in words if (len(w) >= 3 or w.isdigit()) and w not in _NOT_NAMES}
 
 
 class StoreToolExecutor(ShoppingToolExecutor):
+    # True for a card's own button (the host's /api/cart/add): the shopper picked the exact
+    # product, so nothing is ambiguous.
+    direct = False
+
     @property
     def execute(self) -> Execute:
         """A fresh function per access. The runtime takes ``executor.execute`` once per model
@@ -60,11 +112,49 @@ class StoreToolExecutor(ShoppingToolExecutor):
             round_calls.append(name)
             if name == "present_products" and (as_table := compare.as_comparison(self._state, tool_input)):
                 name, tool_input = compare.TOOL, as_table
+            if name == "add_to_cart" and (ask := self._ambiguous(tool_input)):
+                return ToolOutcome.error(ask)
             outcome = await ShoppingToolExecutor.execute(self, name, tool_input)
+            if name == "search_products" and not outcome.is_error:
+                self._note_found(outcome.result_text)
             self._remember_cart_lines(outcome)
             return outcome
 
         return run
+
+    def _note_found(self, result_text: str) -> None:
+        turn = _turns.get(id(self._state))
+        match = _FENCE.search(result_text or "")
+        if turn is None or not match:
+            return
+        try:
+            results = json.loads(match.group(1)).get("results") or []
+        except (ValueError, AttributeError):
+            return
+        for r in results:
+            if isinstance(r, dict) and r.get("product_id") and r.get("title"):
+                turn["found"][r["product_id"]] = r["title"]
+
+    def _ambiguous(self, tool_input: dict[str, Any] | None) -> str | None:
+        """The refusal for an add whose words fit two of this turn's results equally well."""
+        turn = _turns.get(id(self._state))
+        product_id = (tool_input or {}).get("product_id")
+        if self.direct or turn is None or turn["asked"] or not product_id or not turn["found"]:
+            return None
+        said = _words(turn["text"])
+        known = self._state.seen_products.get(product_id)
+        chosen = known.variant_of if known is not None and known.variant_of else product_id
+        if chosen not in turn["found"]:
+            return None
+        score = {pid: len(said & _words(title)) for pid, title in turn["found"].items()}
+        best = score[chosen]
+        ties = [pid for pid, n in score.items() if n == best]
+        if best == 0 or len(ties) < 2:
+            return None
+        turn["asked"] = True
+        names = ", ".join(turn["found"][pid] for pid in ties[:4])
+        words = " ".join(sorted(said & _words(turn["found"][chosen])))
+        return AMBIGUOUS_ADD.format(words=words, names=names)
 
     def _remember_cart_lines(self, outcome: ToolOutcome) -> None:
         state = self._state
@@ -100,4 +190,8 @@ class StoreToolExecutor(ShoppingToolExecutor):
             return ToolOutcome.error(
                 STORE_ERROR.format(detail=f"the store answered {error.response.status_code}")
             )
-        return None
+        if isinstance(error, httpx.TransportError):
+            return ToolOutcome.error(STORE_TIMEOUT.format(detail=type(error).__name__))
+        # Never an empty error: the model fills a blank with a guess ("sold out").
+        logger.warning("tool failed: %s", error, exc_info=True)
+        return ToolOutcome.error(STORE_ERROR.format(detail=detail or type(error).__name__))

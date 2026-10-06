@@ -54,7 +54,7 @@ def test_app_serves_the_widget_and_history():
     from my_store import app as host
 
     client = TestClient(host.app)
-    assert client.get("/healthz").json() == {"ok": True}
+    assert client.get("/healthz").json()["ok"] is True
     assert "sa-bubble" in client.get("/widget.js").text
     sid = client.post("/api/session", json={}).json()["session_id"]
     host.SESSIONS[sid].messages += [

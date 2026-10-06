@@ -175,6 +175,32 @@ Fixed along the way:
 
 Items 15, 18 and 19 also depend on what the model chooses. The host fallbacks cover 15 and 18; re-run the compare evals once API credit is topped up.
 
+#### i17: the search, cart, and chip-crawl evals (items 20-34), 2026-10-06
+
+| # | Finding | Fix | Checked by |
+|---|---|---|---|
+| 20 | "Hotel": the bot said the store has none, without searching | Any word that names something in the catalog (titles, collections, tags) now forces a search. Search also tries synonyms (hotel/stay/accommodation -> hotel, villa, stay). Prompt: never claim the store lacks something without a search this turn. | unit; API flow "hotels are found, not denied" |
+| 21 | "Most expensive" answered S$129, not the S$480 villa | Search returns at most 25 results, ranked by relevance, and the catalog has 112 products. Price wording or a price sort now ranks the whole catalog index, read page by page. | unit; API flow (Bali Villa S$480 first) |
+| 22 | Text before and after a tool call glued together and repeated | The server puts each segment between tool calls on its own paragraph and drops a segment that repeats an earlier one (`textflow.py`) | unit; API flow |
+| 23 | Empty message gave a 422; whitespace gave a generic error | Both now get "What can I help you find?" plus starter chips | unit; API flow |
+| 24 | "What do you sell" took 18.9 s (3 searches) | Answered from the collections in the session context, with no forced search; the catalog is read at boot and every hour | unit (not forced to search); latency needs the real model |
+| 25 | That answer skipped categories | It now lists all of the store's real collections (Books, Entertainment and Games, Retail and Gifts, Telecom and eSIM, Travel) | live index |
+| 26 | Physical items can't be added | Already fixed on this branch: the buyer country comes from `meta.json`, so the tee and mug add. New: if `meta.json` failed (for example, rate limited), a cart refusal re-reads it and retries with the store's country. `/healthz` shows `buyer_country`. **Check that Render runs this branch and that `SHOPIFY_BUYER_COUNTRY=SG`.** | unit; API cart flow |
+| 27 | Tool errors came back empty, so the bot guessed "sold out" | Timeouts say "the store did not answer in time". Any other failure names its error, never blank. | unit |
+| 28 | "Change mug to 3" made no tool call | Cart-change wording forces `get_cart` first, then the update | unit; API flow (the forced call is asserted) |
+| 29 | Chips offered features the store doesn't have, or went stale | Chips are now dropped for: notify, back-in-stock, wishlist or price-alert features; "Add X" when X is already in the cart; "Remove X" when X isn't in it; checkout with an empty cart | unit; API flow |
+| 30 | "Add 2 of the notebook" picked one silently | When the shopper's words fit two of this turn's results equally well, the add is refused once with both names, so the bot asks. A tapped card is exempt. | unit |
+| 31 | Search went down after about 60 requests in 10 minutes | Likely cause: this server's own per-IP limits (20 new chats per hour, 10 messages per minute). Shopify throttling is also possible. Changes: <br>• `LOAD_TEST_TOKEN` lets crawls skip the per-IP limits <br>• 430 is retried like 429 <br>• retries are logged <br>• a failed search answers from the catalog index <br>• `/healthz` shows store health | unit (search outage falls back to the index) |
+| 32 | Retry chips during an outage kept failing | While the store is degraded, only cart chips are offered | unit |
+| 33 | Opening chips didn't match the catalog | They come from the store's collections (`/api/starters`) | walk: "greeting chips are the store's collections" |
+| 34 | Compare chips named products that may not exist | Chip targets are checked against the catalog. Note: the "Chess Set Wooden" does exist (one of 112 products that relevance search can miss). | unit; API flow (a drone chip is dropped) |
+
+`NO_MODEL=1 scripts/loop.sh`:
+
+- 115 unit tests pass.
+- 22 API flows run with 0 errors.
+- The Chromium walk passes **22/22**.
+
 ## Findings and fixes
 
 1. **Every physical product was "sold out" at the cart (fixed by configuration).**

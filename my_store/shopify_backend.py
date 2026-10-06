@@ -33,10 +33,12 @@ import copy
 import html
 import itertools
 import json
+import logging
 import os
 import re
 import time
 import uuid
+from collections import deque
 from typing import Any
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
@@ -61,6 +63,8 @@ from shopping_agent import (
 from .facts import extract
 from .places import PLACE_NAMES, expansions
 
+logger = logging.getLogger(__name__)
+
 # Shopify's hosted example profile declares catalog, cart, checkout and order capabilities.
 # Fine for development; host your own before going live (shopify.dev/docs/agents/profiles).
 EXAMPLE_PROFILE = "https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json"
@@ -68,7 +72,52 @@ TOKEN_URL = "https://api.shopify.com/auth/access_token"
 
 # Variant lookups per product family; the reference caps a family's details at ~60 rows.
 MAX_VARIANT_FETCHES = 30
-_RETRIES = 5  # for Shopify's 429 and 502-504 answers: 0.5+1+2+4+8s at most
+_RETRIES = 5  # for Shopify's 429, 430 and 502-504 answers: 0.5+1+2+4+8s at most
+# 429: rate limited. 430: Shopify's bot protection ("Security Rejection"), which a burst of
+# requests from one server IP can trip. 502-504: briefly down.
+_RETRY_STATUSES = (429, 430, 502, 503, 504)
+# The whole catalog, read page by page with an empty query and kept for an hour: what the
+# store sells by collection, catalog-wide price ranking (search returns a relevance cut of
+# at most 25), checking chip targets, and search answers while Shopify's search is failing.
+_INDEX_SECONDS = 3600
+_INDEX_PAGE = 50
+_INDEX_MAX_PAGES = 20
+# The store is "degraded" after this many failed catalog calls within the window with no
+# success since: chips stop offering searches that would fail again.
+_DEGRADED_FAILURES = 3
+_DEGRADED_WINDOW = 120.0
+# Words for a price ranking. Search is a relevance cut, so "most expensive" over a search
+# found the S$129 record player, not the S$480 villa: these sort the whole catalog instead.
+_SUPERLATIVE = re.compile(
+    r"\b(most[- ]expensive|priciest|highest[- ]priced|dearest|most[- ]premium|luxury|luxurious|"
+    r"cheapest|least[- ]expensive|lowest[- ]priced|most[- ]affordable|cheap|budget|inexpensive)\b",
+    re.IGNORECASE,
+)
+_ASCENDING = re.compile(r"cheap|least|lowest|affordable|budget|inexpensive", re.IGNORECASE)
+# Words that say nothing about which product ("what is your most expensive item?").
+_GENERIC_WORDS = frozenset(
+    "item items product products thing things stuff one ones option options store shop catalog "
+    "sell sells selling carry have has got available something anything show find get buy "
+    "whats what's most least price priced prices expensive cost costs".split()
+)
+# A shopper's word -> the words the catalog titles use for the same thing. Live: "hotel"
+# was answered "we don't carry hotels" with hotel vouchers and a villa stay in the catalog.
+_SEARCH_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "hotel": ("hotel", "villa", "stay"),
+    "accommodation": ("hotel", "villa", "stay"),
+    "lodging": ("hotel", "villa", "stay"),
+    "stay": ("hotel", "villa", "stay"),
+    "villa": ("villa", "hotel"),
+    "resort": ("hotel", "villa"),
+    "room": ("hotel", "villa"),
+    "sim": ("esim", "sim"),
+    "esim": ("esim", "sim"),
+    "data": ("esim",),
+    "luggage": ("suitcase", "packing"),
+    "suitcase": ("suitcase",),
+    "show": ("ticket", "show", "concert"),
+    "tickets": ("ticket",),
+}
 # Catalog reads repeat within a chat and across chats (the same search, the same product's
 # variants); a short cache keeps a busy hour under Shopify's rate limit. Cart and checkout
 # calls are never cached.
@@ -169,6 +218,29 @@ class CartRefused(Unavailable):
     store does not ship to), which is not true of the item, so it is reported apart."""
 
 
+def _singular(word: str) -> str:
+    return word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss") else word
+
+
+def _query_words(query: str) -> list[set[str]]:
+    """A query's meaningful words, each with its catalog synonyms, as match groups."""
+    words = [_singular(w) for w in re.findall(r"[a-z][a-z'-]+", query.lower())]
+    groups = []
+    for w in words:
+        if w in _STOPWORDS or w in _GENERIC_WORDS or len(w) < 3:
+            continue
+        groups.append({w, *_SEARCH_SYNONYMS.get(w, ())})
+    return groups
+
+
+def _synonym_queries(query: str) -> list[str]:
+    """Extra one-word searches for a shopper word the titles may not use ('hotel' ->
+    'villa', 'stay')."""
+    words = [_singular(w) for w in re.findall(r"[a-z][a-z'-]+", query.lower())]
+    extra = [syn for w in words for syn in _SEARCH_SYNONYMS.get(w, ()) if syn not in words]
+    return list(dict.fromkeys(extra))[:3]
+
+
 def _keywords(text: str) -> set[str]:
     words = {w.rstrip("s") if len(w) > 4 else w for w in re.findall(r"[a-z][a-z-]+", text.lower())}
     words -= _STOPWORDS
@@ -243,6 +315,15 @@ class ShopifyUCPBackend(StorefrontBackend):
         self._store_lock = asyncio.Lock()
         self._store_retry_at = 0.0
         self._faqs: dict[str, Policy] = {}
+        self._index: list[Product] = []
+        self._index_until = 0.0
+        self._index_lock = asyncio.Lock()
+        self._collections: dict[str, list[str]] = {}  # product id -> its collection titles
+        self._tags: dict[str, list[str]] = {}
+        # Store health, for /healthz and for chips during an outage.
+        self._failures: deque[float] = deque(maxlen=50)
+        self._last_ok = 0.0
+        self.last_error = ""
         self._faqs_loaded_at = 0.0
         self._utm_source = utm_source
         self._http = http or httpx.AsyncClient(timeout=20)
@@ -361,8 +442,13 @@ class ShopifyUCPBackend(StorefrontBackend):
         "the store did not accept that". Waits Retry-After when given, else 0.5s, 1s, 2s."""
         for attempt in range(_RETRIES + 1):
             response = await self._http.post(url, json=body, headers=headers)
-            if response.status_code not in (429, 502, 503, 504) or attempt == _RETRIES:
+            if response.status_code not in _RETRY_STATUSES or attempt == _RETRIES:
+                if response.status_code in _RETRY_STATUSES:
+                    logger.warning(
+                        "shopify gave up after %d retries: HTTP %s", _RETRIES, response.status_code
+                    )
                 return response
+            logger.warning("shopify HTTP %s, retry %d", response.status_code, attempt + 1)
             try:
                 wait = float(response.headers.get("retry-after", ""))
             except ValueError:
@@ -390,7 +476,8 @@ class ShopifyUCPBackend(StorefrontBackend):
             except (httpx.HTTPError, ValueError):
                 # Keep the configured country for now (non-shipped items still add); retry
                 # in a few minutes rather than on every call.
-                self._store_retry_at = time.monotonic() + 300
+                self._store_retry_at = time.monotonic() + 30
+                logger.warning("meta.json unavailable; buyer country stays %s for now", self._country)
                 return
             self._store_loaded = True
         self._currency = meta.get("currency") or self._currency
@@ -420,6 +507,11 @@ class ShopifyUCPBackend(StorefrontBackend):
         available = [v for v in variants if (v.get("availability") or {}).get("available", True)]
         media = raw.get("media") or []
         options = self._options(raw)
+        # Most specific first: "Books" before "Retail and Gifts".
+        collections = sorted(
+            (c["title"] for c in raw.get("collections") or [] if isinstance(c, dict) and c.get("title")),
+            key=lambda title: " and " in title.lower(),
+        )
         product = Product(
             product_id=raw["id"],
             title=raw.get("title", raw["id"]),
@@ -430,8 +522,11 @@ class ShopifyUCPBackend(StorefrontBackend):
             in_stock=bool(available) if variants else True,
             short_description=_summary(_text(raw.get("description"))),
             options=options,
+            category=collections[0] if collections else None,
             attributes={"product_url": self._product_url(raw), **self._facts(raw, low)},
         )
+        self._collections[product.product_id] = collections
+        self._tags[product.product_id] = [str(t) for t in raw.get("tags") or []]
         if not options and len(variants) == 1:
             self._default_variant[product.product_id] = variants[0]["id"]
         return product
@@ -483,26 +578,176 @@ class ShopifyUCPBackend(StorefrontBackend):
     ) -> list[Product]:
         filters = filters or SearchFilters()
         await self._load_store()
-        products = await self._search(query, filters, limit)
-        extra = expansions(query)
-        if extra:
-            # Travel products are titled by city ("Kuala Lumpur City Tour"), not country.
-            found = await asyncio.gather(*(self._search(q, filters, limit) for q in extra))
-            seen = {p.product_id for p in products}
-            for q, batch in zip(extra, found, strict=True):
-                place = next(x for x in PLACE_NAMES if x in q)
-                for p in batch:
-                    named = place in f"{p.title} {p.short_description or ''}".lower()
-                    if named and p.product_id not in seen:  # Shopify's fuzzy matches dropped
-                        seen.add(p.product_id)
-                        products.append(p)
-            products = products[: max(limit, 12)]
-        if not products and _RANKING_WORDS.search(query):
-            # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales
-            # or rating data, so drop the ranking words and fall back to relevance.
-            rest = " ".join(_RANKING_WORDS.sub(" ", query).split())
-            products = await self._search(rest, filters, limit)
+        ranked = await self._ranked(query, filters, limit)
+        if ranked is not None:
+            return ranked
+        try:
+            products = await self._search(query, filters, limit)
+            extra = [(q, "place") for q in expansions(query)] + [(q, "word") for q in _synonym_queries(query)]
+            if extra:
+                # Travel products are titled by city ("Kuala Lumpur City Tour"), not country;
+                # a shopper's word may not be the title's ("hotel" -> "Bali Villa Stay").
+                found = await asyncio.gather(*(self._search(q, filters, limit) for q, _ in extra))
+                seen = {p.product_id for p in products}
+                for (q, kind), batch in zip(extra, found, strict=True):
+                    place = next((x for x in PLACE_NAMES if x in q), None) if kind == "place" else None
+                    for p in batch:
+                        text = f"{p.title} {p.short_description or ''}".lower()
+                        named = (place in text) if place else bool(re.search(rf"\b{re.escape(q)}", text))
+                        if named and p.product_id not in seen:  # Shopify's fuzzy matches dropped
+                            seen.add(p.product_id)
+                            products.append(p)
+                products = products[: max(limit, 12)]
+            if not products and _RANKING_WORDS.search(query):
+                # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales
+                # or rating data, so drop the ranking words and fall back to relevance.
+                rest = " ".join(_RANKING_WORDS.sub(" ", query).split())
+                products = await self._search(rest, filters, limit)
+        except (ShopifyError, httpx.HTTPError) as error:
+            if isinstance(error, ShopifyNotFound):
+                raise
+            # Shopify's search is failing (live: rate limited during a test crawl). Answer
+            # from the catalog index read earlier rather than with an error.
+            self._failed(error)
+            fallback = self._index_match(query)
+            if not fallback:
+                raise ShopifyError(
+                    "the store's search is not answering right now (busy or rate-limited); "
+                    "try again in a minute"
+                ) from error
+            logger.warning("search %r answered from the catalog index (%s)", query, error)
+            return self._filtered(fallback, filters)[:limit]
+        self._ok()
         return products
+
+    # -- the catalog index ---------------------------------------------------------------
+
+    async def catalog_index(self) -> list[Product]:
+        """Every sale-ready product, read page by page and kept for an hour. A failed read
+        keeps the last good index and tries again in a minute."""
+        if self._index and self._index_until > time.monotonic():
+            return self._index
+        async with self._index_lock:
+            if self._index and self._index_until > time.monotonic():
+                return self._index
+            await self._load_store()
+            products: dict[str, Product] = {}
+            cursor = None
+            try:
+                for _ in range(_INDEX_MAX_PAGES):
+                    page: dict[str, Any] = {"limit": _INDEX_PAGE} | ({"cursor": cursor} if cursor else {})
+                    catalog: dict[str, Any] = {"query": "", "pagination": page}
+                    if self._context():
+                        catalog["context"] = self._context()
+                    content = await self._call_uncached("search_catalog", {"catalog": catalog})
+                    for raw in content.get("products") or []:
+                        product = self._product(raw)
+                        products.setdefault(product.product_id, product)
+                    more = content.get("pagination") or {}
+                    cursor = more.get("cursor")
+                    if not more.get("has_next_page") or not cursor:
+                        break
+            except (ShopifyError, httpx.HTTPError, ValueError, KeyError) as error:
+                self._failed(error)
+                logger.warning("catalog index read failed (%s); keeping %d products", error, len(self._index))
+                self._index_until = time.monotonic() + 60
+                return self._index
+            self._ok()
+            self._index = list(products.values())
+            self._index_until = time.monotonic() + _INDEX_SECONDS
+            logger.info("catalog index: %d products", len(self._index))
+            return self._index
+
+    def collections(self) -> dict[str, list[Product]]:
+        """The index by collection, most specific collection per product, largest first."""
+        groups: dict[str, list[Product]] = {}
+        for product in self._index:
+            groups.setdefault(product.category or "Other", []).append(product)
+        return dict(sorted(groups.items(), key=lambda kv: -len(kv[1])))
+
+    def vocabulary(self) -> set[str]:
+        """Words that name something the store sells: titles, collections, tags."""
+        words: set[str] = set()
+        for p in self._index:
+            text = " ".join(
+                [p.title, *self._collections.get(p.product_id, []), *self._tags.get(p.product_id, [])]
+            )
+            words |= {_singular(w) for w in re.findall(r"[a-z][a-z'-]+", text.lower()) if len(w) > 2}
+        return words - _STOPWORDS
+
+    def _index_match(self, query: str) -> list[Product]:
+        """Index products naming the query's words (synonyms included), best match first;
+        the whole index when the query names nothing in particular."""
+        words = _query_words(query)
+        if not words:
+            return list(self._index)
+        scored = []
+        for p in self._index:
+            hay = " ".join(
+                [
+                    p.title,
+                    p.short_description or "",
+                    *self._collections.get(p.product_id, []),
+                    *self._tags.get(p.product_id, []),
+                ]
+            ).lower()
+            score = sum(1 for group in words if any(re.search(rf"\b{re.escape(w)}", hay) for w in group))
+            if score:
+                scored.append((score, p))
+        scored.sort(key=lambda sp: -sp[0])
+        return [p for _, p in scored]
+
+    @staticmethod
+    def _filtered(products: list[Product], filters: SearchFilters) -> list[Product]:
+        return [
+            p
+            for p in products
+            if (filters.min_price is None or p.price >= filters.min_price)
+            and (filters.max_price is None or p.price <= filters.max_price)
+        ]
+
+    async def _ranked(self, query: str, filters: SearchFilters, limit: int) -> list[Product] | None:
+        """A price ranking over the whole catalog ('most expensive', 'cheapest tour', or a
+        price sort), or None for an ordinary search."""
+        word = _SUPERLATIVE.search(query)
+        if not word and filters.sort not in ("price_asc", "price_desc"):
+            return None
+        index = await self.catalog_index()
+        if not index:
+            return None
+        rest = _SUPERLATIVE.sub(" ", query)
+        matches = self._filtered(self._index_match(rest), filters)
+        if not matches:
+            return None
+        ascending = bool(word and _ASCENDING.search(word.group(0))) if word else filters.sort == "price_asc"
+        matches.sort(key=lambda p: p.price, reverse=not ascending)
+        return matches[:limit]
+
+    # -- store health --------------------------------------------------------------------
+
+    def _failed(self, error: Exception) -> None:
+        self._failures.append(time.monotonic())
+        self.last_error = f"{type(error).__name__}: {error}"[:200]
+
+    def _ok(self) -> None:
+        self._last_ok = time.monotonic()
+
+    def degraded(self) -> bool:
+        """Several catalog calls failed lately and none has worked since."""
+        now = time.monotonic()
+        recent = [t for t in self._failures if now - t < _DEGRADED_WINDOW and t > self._last_ok]
+        return len(recent) >= _DEGRADED_FAILURES
+
+    def health(self) -> dict[str, Any]:
+        now = time.monotonic()
+        return {
+            "degraded": self.degraded(),
+            "failures_last_5m": sum(1 for t in self._failures if now - t < 300),
+            "last_error": self.last_error or None,
+            "catalog_products": len(self._index),
+            "buyer_country": self._country,
+            "store_meta_loaded": self._store_loaded,
+        }
 
     async def _search(self, query: str, filters: SearchFilters, limit: int) -> list[Product]:
         catalog: dict[str, Any] = {"query": query, "pagination": {"limit": limit}}
@@ -649,7 +894,29 @@ class ShopifyUCPBackend(StorefrontBackend):
         changed: str,
         variant_id: str | None = None,
     ) -> Cart:
-        """Write the whole cart (update_cart replaces everything it is sent)."""
+        """Write the whole cart (update_cart replaces everything it is sent). A refusal while
+        the store's country is still unknown (meta.json failed, e.g. rate limited) reads it
+        now and writes once more: a wrong buyer country refuses every shipped item."""
+        try:
+            return await self._write_lines(session, lines, changed, variant_id)
+        except CartRefused:
+            if self._store_loaded:
+                raise
+            before = self._country
+            self._store_retry_at = 0.0
+            await self._load_store()
+            if self._country == before:
+                raise
+            logger.warning("cart refused with buyer country %s; retrying with %s", before, self._country)
+            return await self._write_lines(session, lines, changed, variant_id)
+
+    async def _write_lines(
+        self,
+        session: ShoppingSessionContext,
+        lines: dict[str, int],
+        changed: str,
+        variant_id: str | None = None,
+    ) -> Cart:
         await self._load_store()
         cart_id = self._cart_ids.get(session.session_id)
         payload: dict[str, Any] = {

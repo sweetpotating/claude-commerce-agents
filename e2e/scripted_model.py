@@ -26,8 +26,9 @@ FENCE = re.compile(r"<storefront_data>\s*(.*?)\s*</storefront_data>", re.S)
 class Turn:
     """What a policy sees: the shopper's message and this turn's tool results so far."""
 
-    def __init__(self, messages: list[dict], system: Any = None) -> None:
+    def __init__(self, messages: list[dict], system: Any = None, tool_choice: Any = None) -> None:
         self.user = ""
+        self.forced = (tool_choice or {}).get("name") if isinstance(tool_choice, dict) else None
         self.context = _session_context(system)  # the host's per-turn session context
         self.results: list[tuple[str, str]] = []  # (tool name, result text), this turn only
         names: dict[str, str] = {}
@@ -248,6 +249,59 @@ def compare_ghost(t: Turn):
     return text_message("Those two side by side.")
 
 
+def say_then(text: str, *calls: tuple) -> Any:
+    """Text, then tool calls, in one message (the model often writes a line first)."""
+    message = tool_calls_message(*calls)
+    message.content.insert(0, text_block(text))
+    return message
+
+
+def most_expensive(t: Turn):
+    if not t.called("search_products"):
+        return tool_calls_message(("search_products", {"query": "most expensive"}))
+    picks = [{"product_id": p["product_id"]} for p in t.products()[:3]]
+    return tool_calls_message(("present_products", {"picks": picks}), chips("Show the cheapest"))
+
+
+def hotels(t: Turn):
+    if not t.called("search_products"):
+        return tool_calls_message(("search_products", {"query": "hotel"}))
+    picks = [{"product_id": p["product_id"]} for p in t.products()[:4]]
+    return tool_calls_message(("present_products", {"picks": picks}), chips("Show Tokyo tours"))
+
+
+LOOKING = "Let me look through the catalog for that for you."
+
+
+def repeats_itself(t: Turn):
+    """Text before the search, then the same line again after it, as seen live."""
+    if not t.called("search_products"):
+        return say_then(LOOKING, ("search_products", {"query": "mug"}))
+    mug = t.find("mug")
+    return say_then(
+        f"{LOOKING} Here is the mug.",
+        ("present_products", {"picks": [{"product_id": mug["product_id"]}]}),
+        chips(
+            "Notify me when back in stock",
+            "Compare the drone and the mug",
+            "Show more mugs",
+            "Wishlist it",
+        ),
+    )
+
+
+def change_quantity(t: Turn):
+    """'Change the mug to 3': the host forces get_cart first; this checks it did."""
+    if not t.called("get_cart"):
+        if t.forced != "get_cart":
+            return text_message("(get_cart was not forced for a cart change)")
+        return tool_calls_message(("get_cart", {}))
+    if not t.called("update_cart_item"):
+        line = next(i for i in t.data("get_cart")["items"] if "mug" in i["title"].lower())
+        return tool_calls_message(("update_cart_item", {"product_id": line["product_id"], "quantity": 3}))
+    return text_message("Done: 3 mugs.")
+
+
 def compare_plans(t: Turn):
     if not t.called("search_products"):
         return tool_calls_message(("search_products", {"query": "plan"}))
@@ -319,7 +373,7 @@ def remember(t: Turn):
 
 
 SCENARIOS: list[tuple[str, Policy]] = [
-    (r"\bgift\b", discovery),
+    (r"\bgifts?\b", discovery),
     (r"what sizes", tee_sizes),
     (r"add the (logo )?tee in (size )?m", add_tee_m),
     (r"add (a |the )?(bookworm )?mug", add_by_name("mug", "mug")),
@@ -327,6 +381,10 @@ SCENARIOS: list[tuple[str, Policy]] = [
     (r"add the japan esim", add_by_name("japan esim", "Japan eSIM")),
     (r"make it 2 mugs", cart_edit("update_cart_item", "mug", 2)),
     (r"remove the esim", cart_edit("remove_from_cart", "esim")),
+    (r"most expensive", most_expensive),
+    (r"hotels", hotels),
+    (r"mug again", repeats_itself),
+    (r"change the mug to 3", change_quantity),
     (r"compare (these|them)", compare_shown),
     (r"difference between", difference),
     (r"compare this with the mug", compare_this_with_mug),
@@ -364,7 +422,7 @@ class ScriptedClient:
                 response=httpx.Response(400, request=request),
                 body=None,
             )
-        turn = Turn(kwargs["messages"], kwargs.get("system"))
+        turn = Turn(kwargs["messages"], kwargs.get("system"), kwargs.get("tool_choice"))
         for pattern, policy in SCENARIOS:
             if re.search(pattern, turn.user, re.IGNORECASE):
                 step = policy(turn)

@@ -22,6 +22,7 @@ import os
 import secrets
 import time
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -41,12 +42,15 @@ from shopping_agent import (
 from shopping_agent.serialization import cart_payload
 from shopping_agent_runtime import ShoppingAgent
 
+from . import chips as chip_rules
 from . import compare, discovery, fallback, guards
 from .backend import MyStoreBackend
-from .executor import StoreToolExecutor
+from .executor import StoreToolExecutor, note_turn
 from .funnel import CLIENT_EVENTS, PRODUCT_COMPONENTS, funnel
 from .industry import CONTACT_EMAIL, industry_config_overrides, industry_extensions
+from .places import PLACE_NAMES
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
+from .textflow import TextFlow
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +103,25 @@ class Session:
     pending_app_events: list[str] = field(default_factory=list)
     # The products the last reply showed: what "these two" and "them" mean (compare.py).
     last_shown: list[dict[str, Any]] = field(default_factory=list)
+    # What the cart holds, for chips that would go stale ("Add X" with X in the cart).
+    cart_titles: list[str] = field(default_factory=list)
     turns: int = 0
     last_seen: float = field(default_factory=time.monotonic)
 
 
 SESSIONS: dict[str, Session] = {}  # TODO(live): Redis or your app's session store
-app = FastAPI(title="Shopping agent")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Read the catalog index in the background at boot: collections for the opening chips
+    and "what do you sell", and the words that tell a product request from small talk."""
+    if isinstance(backend, ShopifyUCPBackend) and os.environ.get("CATALOG_WARMUP", "1") == "1":
+        asyncio.get_running_loop().create_task(refresh_catalog())
+    yield
+
+
+app = FastAPI(title="Shopping agent", lifespan=lifespan)
 STATIC = Path(__file__).parent / "static"
 
 
@@ -117,7 +134,8 @@ class StartSession(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, max_length=4000)
+    # An empty or blank message gets a friendly prompt, not a 422 (chat()).
+    message: str = Field(default="", max_length=4000)
     page: PageContext | None = None
     # "chip" when the shopper tapped a suggestion: that turn always searches the catalog.
     source: str | None = Field(default=None, max_length=16)
@@ -179,12 +197,53 @@ async def widget_config() -> JSONResponse:
 
 @app.get("/healthz", include_in_schema=False)
 async def healthz() -> dict:
-    return {"ok": True}
+    """Up, which commit is deployed (Render sets RENDER_GIT_COMMIT), and the store's health:
+    recent failed catalog calls and the last error, so an outage is visible from outside."""
+    out: dict[str, Any] = {"ok": True, "commit": (os.environ.get("RENDER_GIT_COMMIT") or "")[:7] or None}
+    if isinstance(backend, ShopifyUCPBackend):
+        out["store"] = backend.health()
+    return out
+
+
+# Load tests and eval crawls come from one IP and would trip the per-IP limits meant for
+# abuse (live: a 60-chat crawl in 10 minutes). With LOAD_TEST_TOKEN set on the server, a
+# request carrying the same value in X-Load-Test-Token skips the per-IP limits; the daily
+# turn and token budgets still apply.
+LOAD_TEST_TOKEN = os.environ.get("LOAD_TEST_TOKEN", "")
+
+
+def load_test(request: Request) -> bool:
+    given = request.headers.get("x-load-test-token", "")
+    return bool(LOAD_TEST_TOKEN) and secrets.compare_digest(given, LOAD_TEST_TOKEN)
+
+
+async def refresh_catalog() -> list[Any]:
+    if not isinstance(backend, ShopifyUCPBackend):
+        return []
+    try:
+        index = await backend.catalog_index()
+    except Exception:
+        logger.warning("catalog index failed", exc_info=True)
+        return []
+    if index:
+        discovery.set_vocabulary(backend.vocabulary())
+        discovery.set_starters(list(backend.collections()))
+    return index
+
+
+@app.get("/api/starters")
+async def starters() -> dict:
+    """The opening chips: the store's own collections once the catalog is read."""
+    await refresh_catalog()
+    return {"suggestions": list(discovery.STARTER_CHIPS)}
 
 
 @app.post("/api/session")
 async def start_session(body: StartSession, request: Request) -> dict:
-    guards.session_limiter.check(guards.client_ip(request), "Too many new chats. Please wait a bit.")
+    if not load_test(request):
+        guards.session_limiter.check(
+            guards.client_ip(request), "Too many new chats from your connection. Please wait a few minutes."
+        )
     drop_idle_sessions()
     s = Session(session_id=secrets.token_urlsafe(24), user_id=f"guest-{secrets.token_urlsafe(12)}")
     SESSIONS[s.session_id] = s
@@ -243,11 +302,19 @@ async def page_opened(page: PageContext, x_session_id: str | None = Header(defau
 async def chat(body: ChatRequest, request: Request, x_session_id: str | None = Header(default=None)):
     s = current(x_session_id)
     ip = guards.client_ip(request)
-    guards.chat_limiter.check(ip, "You're sending messages quickly. Please wait a moment.")
+    text = body.message.strip()
+    if not text:
+        # Live: an empty message was a 422 and a blank one a generic error.
+        return StreamingResponse(blank_message(s), media_type="text/event-stream")
+    body.message = text
+    testing = load_test(request)
+    if not testing:
+        guards.chat_limiter.check(ip, "You're sending messages quickly. Please wait a moment.")
     guards.token_budget.check()
     if s.turns >= guards.TURNS_PER_SESSION:
         raise HTTPException(429, "This chat has reached its length limit. Start a new chat to continue.")
-    guards.ip_daily.check(ip, "You've reached today's chat limit. Please come back tomorrow.")
+    if not testing:
+        guards.ip_daily.check(ip, "You've reached today's chat limit. Please come back tomorrow.")
     guards.daily_budget.spend()
     s.turns += 1
     if s.turns == 1:
@@ -266,7 +333,12 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     # "This" is the product page open, "these" the products last shown: said in the session
     # context, so "compare this with the mug" or "compare these two" needs no question.
     ctx.page.extra = {**ctx.page.extra, **compare.context_extra(viewing, s.last_shown)}
-    compare.note_turn(s.state, body.message)
+    # What the store sells, by collection: "what do you sell" needs no searches.
+    if sells := store_sells(s, examples=bool(discovery.OVERVIEW.search(body.message))):
+        ctx.page.extra["store_sells"] = sells
+    note_turn(s.state, body.message)
+    await note_cart(s, ctx)
+    degraded = isinstance(backend, ShopifyUCPBackend) and backend.degraded()
     chip = body.source == "chip"
     if chip:
         discovery.chip_tapped(s.state)
@@ -280,9 +352,22 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         # the closest ones found, above the chips (which it holds back until then).
         has_chips, titles, held, outage = False, [], [], False
         said, compared, last_records = False, None, []
+        flow = TextFlow()
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
+                if event.type == "text_delta":
+                    # Parts between tool calls on their own paragraph, repeats dropped.
+                    out = flow.feed(event.data.get("text") or "")
+                    if not out:
+                        continue
+                    event = AgentEvent.text_delta(out)
+                elif event.type == "tool_call":
+                    flow.tool()
+                if event.type == "cart_update":
+                    s.cart_titles = [
+                        i.get("title", "") for i in (event.data.get("cart") or {}).get("items") or []
+                    ]
                 if event.type == "turn_complete":
                     guards.token_budget.charge(event.data.get("usage") or {})
                 if event.type == "tool_result" and event.data.get("tool") == "add_to_cart":
@@ -297,7 +382,12 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                 said |= event.type == "text_delta" and bool((event.data.get("text") or "").strip())
                 if event.type == "ui":
                     component, payload = event.data.get("component"), event.data.get("payload") or {}
-                    has_chips |= component == "suggestions"
+                    if component == "suggestions":
+                        kept = clean_chips(s, payload.get("suggestions") or [], degraded)
+                        if not kept:
+                            continue  # the host adds checked ones at the end
+                        event = AgentEvent.ui("suggestions", {**payload, "suggestions": kept})
+                        has_chips = True
                     if component == "comparison":
                         compared = payload
                     if records := discovery.product_records(component, payload):
@@ -309,6 +399,8 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                         held.append(event)
                         continue
                 yield to_sse(event)
+            if rest := flow.end():
+                yield to_sse(AgentEvent.text_delta(rest))
             failed = False
         except Exception as error:
             kind, message = shopper_error(error)
@@ -325,7 +417,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                 if cards:
                     funnel.record(s.session_id, "products_shown", source="fallback")
                     yield to_sse(AgentEvent.ui("products", cards))
-                if chips:
+                if chips := clean_chips(s, chips, degraded):
                     has_chips = True
                     yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
                 if s.messages and s.messages[-1].get("role") == "user":  # keep turns alternating
@@ -348,8 +440,8 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         for event in held:
             yield to_sse(event)
         if not has_chips and not outage:  # during an outage a chip would only fail again
-            chips = discovery.fallback_chips(titles)
-            yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
+            if chips := clean_chips(s, discovery.fallback_chips(titles), degraded):
+                yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
         if not failed:
             await agent.update_memory(s.messages, ctx)
 
@@ -359,6 +451,51 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         # No proxy buffering or caching: each event reaches the phone as it happens.
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def blank_message(s: Session) -> AsyncIterator[str]:
+    yield to_sse(
+        AgentEvent.text_delta("What can I help you find? Tap an idea below or type what you're after.")
+    )
+    yield to_sse(AgentEvent.ui("suggestions", {"suggestions": list(discovery.STARTER_CHIPS)}))
+
+
+def clean_chips(s: Session, chips: list[str], degraded: bool) -> list[str]:
+    """Chips the store can honour (chips.py); while search is failing, only cart chips."""
+    # Product checks only once the catalog is read; places count as catalog words then.
+    vocabulary = discovery.VOCABULARY | set(PLACE_NAMES) if discovery.VOCABULARY else set()
+    kept = chip_rules.clean(chips, vocabulary=vocabulary, cart_titles=s.cart_titles, degraded=degraded)
+    if degraded and not kept:
+        kept = chip_rules.outage_chips(s.cart_titles)
+    return kept
+
+
+async def note_cart(s: Session, ctx: Any) -> None:
+    """The cart's titles at the start of a turn (the bar's taps change it between turns)."""
+    try:
+        cart = await backend.get_cart(ctx)
+    except Exception:
+        return
+    s.cart_titles = [item.title for item in cart.items]
+
+
+def store_sells(s: Session, examples: bool) -> dict[str, Any]:
+    """The store's collections with product counts; with ``examples``, three products from
+    each, counted as seen so the reply can show them without searching first."""
+    if not isinstance(backend, ShopifyUCPBackend) or not backend.collections():
+        return {}
+    out: dict[str, Any] = {}
+    for title, products in backend.collections().items():
+        entry: dict[str, Any] = {"products": len(products)}
+        if examples:
+            picks = products[:3]
+            s.state.remember_products(picks)
+            entry["examples"] = [
+                {"product_id": p.product_id, "title": p.title, "price": compare.money(p.price, p.currency)}
+                for p in picks
+            ]
+        out[title] = entry
+    return out
 
 
 KEEPALIVE_SECONDS = 10
@@ -497,7 +634,9 @@ app.post("/api/product/options")(product_page)
 @app.post("/api/cart/add")
 async def cart_add(body: CartAdd, x_session_id: str | None = Header(default=None)) -> dict:
     s = current(x_session_id)
-    out = await executor_for(s).execute("add_to_cart", body.model_dump())
+    executor = executor_for(s)
+    executor.direct = True  # a tapped card names one exact product
+    out = await executor.execute("add_to_cart", body.model_dump())
     if out.blocked or out.is_error:
         raise HTTPException(400, _first_sentence(out.result_text))
     product = s.state.seen_products.get(body.product_id)

@@ -121,6 +121,28 @@ DISCOVERY_NOTES = (
     "shopper can buy straight from a card; you do not need to ask before they tap."
 )
 
+# Rules from the search and cart evals; each is also enforced or backed in code where it can
+# be (shopify_backend: synonyms, catalog-wide price ranking; discovery: the cart is read
+# before an edit; executor: an add that fits two products asks; chips.py: chips checked).
+CATALOG_NOTES = (
+    "Never say the store does not carry, sell, or have something unless a search in this "
+    "turn found nothing for it; search the shopper's word and the catalog's own words for it "
+    "first (a hotel or stay is a hotel voucher or villa stay; a SIM is an eSIM). For 'what do "
+    "you sell' or 'what do you have', answer from the session context's "
+    "current_page.extra.store_sells (the store's collections, with product counts and "
+    "examples) without searching: name every collection, then show a few of the examples "
+    "with present_products. For 'most expensive', 'priciest', 'cheapest', or any price "
+    "ranking, search with those words in the query or sort by price: that ranks the whole "
+    "catalog, while an ordinary search is a relevance cut that misses items. To change a "
+    "quantity or remove an item, read the cart (get_cart) and then call update_cart_item or "
+    "remove_from_cart; never answer a cart change from memory. When the shopper's words fit "
+    "more than one product (two notebooks, two Japan eSIMs) and nothing said picks one, show "
+    "them and ask which before adding. Chips offer only what this chat can do: search, "
+    "compare, add, remove, change a quantity, check out; never 'notify me', 'back in stock "
+    "alert', 'wishlist', or 'track price'. A chip that names a product names one a tool "
+    "returned in this session."
+)
+
 # Where a shopper reaches a person. The store's contact FAQ gives the same address.
 CONTACT_EMAIL = os.environ.get("STORE_CONTACT_EMAIL", "tanyueting96@gmail.com")
 
@@ -147,6 +169,7 @@ def industry_config_overrides() -> dict[str, Any]:
             (
                 os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES),
                 DISCOVERY_NOTES,
+                CATALOG_NOTES,
                 COMPARE_NOTES,
                 HANDOFF_NOTES,
             )

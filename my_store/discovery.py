@@ -95,6 +95,23 @@ SKIP_CUES = (
 _SKIP_START = re.compile(r"^\s*(add|yes|yep|yeah|no|nope|ok|okay|sure|great|cool)\b", re.IGNORECASE)
 
 
+# Words naming what the store sells (titles, collections, tags), set by the host from the
+# catalog index. A message naming one searches even with no cue word: live, "hotel" was
+# answered "we don't carry hotels" without a search, with hotel vouchers in the catalog.
+VOCABULARY: set[str] = set()
+_EXTRA_NOUNS = {"hotel", "hotels", "villa", "stay", "accommodation", "esim", "sim", "tour", "ticket", "book"}
+
+
+def set_vocabulary(words: set[str]) -> None:
+    VOCABULARY.clear()
+    VOCABULARY.update(words)
+
+
+def _names_a_product(text: str) -> bool:
+    words = {w[:-1] if len(w) > 3 and w.endswith("s") else w for w in re.findall(r"[a-z]+", text.lower())}
+    return bool(words & (VOCABULARY | _EXTRA_NOUNS))
+
+
 def shopping_request(text: str) -> bool:
     # The host's note about button taps is not the shopper's words.
     words = " ".join(line for line in text.splitlines() if not line.startswith("[App events"))
@@ -103,7 +120,33 @@ def shopping_request(text: str) -> bool:
         return False
     if any(cue in padded for cue in SKIP_CUES):
         return False
-    return any(cue in padded for cue in SHOPPING_CUES)
+    return any(cue in padded for cue in SHOPPING_CUES) or _names_a_product(words)
+
+
+# "What do you sell?": answered from the store's collections in the session context
+# (current_page.extra.store_sells), not from three ad hoc searches (live: 18.9 s).
+OVERVIEW = re.compile(
+    r"\bwhat (do|does|else do) (you|the store|this store) (sell|have|carry|offer|stock)\b|"
+    r"\bwhat (kind|kinds|sort|sorts|type|types) of (products|things|stuff|items)\b|"
+    r"\bwhat('s| is) (in|on) (your|the) (store|shop|catalog)\b",
+    re.IGNORECASE,
+)
+
+# A change to the cart reads the cart first. Live, "change mug to 3" made no tool call and
+# the reply came from what the model believed the cart held.
+CART_EDIT = re.compile(
+    r"\b(change|update|set|increase|decrease|reduce|bump|lower)\b.*(\bto\b\s*\d|\bqty\b|\bquantity\b|\d)|"
+    r"\bmake (it|that|them|those|the \w+) \d+|\b(remove|delete|take out|drop)\b|"
+    r"\bonly (want|need) \d+|\b\d+ instead\b",
+    re.IGNORECASE,
+)
+
+
+def _cart_edit(config: Any, text: str, state: ShoppingSessionState) -> dict[str, Any] | None:
+    return {} if CART_EDIT.search(text) else None
+
+
+CART_EDIT_RULE = GroundingRule("cart_edit", "get_cart", _cart_edit)
 
 
 # Sessions whose next message came from a tapped suggestion chip (keyed by state object):
@@ -138,7 +181,7 @@ _ANSWER_CHIP = re.compile(
 def _discovery(config: Any, text: str, state: ShoppingSessionState) -> dict[str, Any] | None:
     # "Compare these two" names nothing new: a forced search would find a different pair
     # (live, it compared the wrong products). The model compares what it last showed.
-    if compare.refers_to_shown(text):
+    if compare.refers_to_shown(text) or OVERVIEW.search(text):
         _chip_turns.discard(id(state))
         return None
     if id(state) in _chip_turns:
@@ -162,7 +205,14 @@ _PRODUCT_PATHS = {
     "plan_matrix": [("plans", None)],
 }
 
-STARTER_CHIPS = ("Show me your best picks", "Plan a 2-day trip", "Gift ideas", "Compare your plans")
+STARTER_CHIPS = ["Show me your best picks", "Plan a 2-day trip", "Gift ideas", "Compare your plans"]
+
+
+def set_starters(collections: list[str]) -> None:
+    """Opening chips from the store's own collections (largest first). Live, the opening
+    chips offered "electronics" and "home goods" on a travel, eSIM, and books store."""
+    if collections:
+        STARTER_CHIPS[:] = [f"Shop {title}" for title in collections[:4]]
 
 
 def product_records(component: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -229,4 +279,4 @@ def install() -> None:
     from shopping_agent_runtime import orchestrator
 
     if DISCOVERY_RULE not in orchestrator.GROUNDING_RULES:
-        orchestrator.GROUNDING_RULES = (*GROUNDING_RULES, DISCOVERY_RULE)
+        orchestrator.GROUNDING_RULES = (*GROUNDING_RULES, CART_EDIT_RULE, DISCOVERY_RULE)

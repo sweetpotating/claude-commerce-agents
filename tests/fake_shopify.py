@@ -95,6 +95,16 @@ def _variant(vid: str) -> dict[str, Any]:
     }
 
 
+# Live shape: each product lists its collections (most specific and broad ones) and tags.
+_COLLECTIONS = {
+    "gid://shopify/Product/1": ["Clothing", "Retail and Gifts"],
+    "gid://shopify/Product/2": ["Camping"],
+    "gid://shopify/Product/3": ["Clothing"],
+    "gid://shopify/Product/4": ["Tours"],
+    "gid://shopify/Product/5": ["Tours"],
+}
+
+
 def _product(pid: str, variants: list[str]) -> dict[str, Any]:
     spec = _PRODUCTS[pid]
     amounts = [a for v, (p, _, a, _) in _VARIANTS.items() if p == pid]
@@ -115,12 +125,19 @@ def _product(pid: str, variants: list[str]) -> dict[str, Any]:
             "max": {"amount": max(amounts), "currency": "USD"},
         },
         "variants": [_variant(v) for v in variants],
+        "collections": [
+            {"id": f"gid://shopify/Collection/{i}", "handle": t.lower(), "title": t}
+            for i, t in enumerate(_COLLECTIONS.get(pid, []))
+        ],
+        "tags": [t.lower() for t in _COLLECTIONS.get(pid, [])],
     }
 
 
 class FakeShopifyStore:
     def __init__(self, *, meta: bool = True) -> None:
         self.meta = meta  # serve /meta.json (a password page can hide it)
+        self.meta_failures = 0  # the next N /meta.json reads answer 429
+        self.search_failures = 0  # the next N search_catalog calls answer 429 (rate limited)
         self.carts: dict[str, dict[str, Any]] = {}
         self.calls: list[tuple[str, dict[str, Any], dict[str, str]]] = []
 
@@ -129,6 +146,9 @@ class FakeShopifyStore:
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
         if request.url.path == "/meta.json":  # live shape, trimmed
+            if self.meta_failures:
+                self.meta_failures -= 1
+                return httpx.Response(429)
             if not self.meta:
                 return httpx.Response(404)
             meta = {"country": "US", "currency": "USD", "ships_to_countries": sorted(MARKET)}
@@ -141,6 +161,9 @@ class FakeShopifyStore:
         self.calls.append((name, args, dict(request.headers)))
         if request.url.path == "/api/ucp/mcp" and "ucp-agent" not in args.get("meta", {}):
             return self._result(body, {"messages": [{"type": "error", "code": "profile_required"}]}, True)
+        if name == "search_catalog" and self.search_failures:
+            self.search_failures -= 1
+            return httpx.Response(429)
         handler = getattr(self, f"_{name}", None)
         if handler is None:
             return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "error": {"code": -32601}})
@@ -165,7 +188,13 @@ class FakeShopifyStore:
         price = args["catalog"].get("filters", {}).get("price", {})
         if "max" in price:
             hits = [h for h in hits if h["price_range"]["min"]["amount"] <= price["max"]]
-        return self._result(body, {"products": hits})
+        # Live: pages of `limit` with an opaque cursor while has_next_page.
+        page = args["catalog"].get("pagination") or {}
+        start = int(page.get("cursor") or 0)
+        size = page.get("limit", 10)
+        more = start + size < len(hits)
+        pagination = {"has_next_page": more} | ({"cursor": str(start + size)} if more else {})
+        return self._result(body, {"products": hits[start : start + size], "pagination": pagination})
 
     def _get_product(self, body, args, request):
         pid = args["catalog"]["id"]
