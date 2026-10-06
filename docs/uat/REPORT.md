@@ -21,6 +21,9 @@ non-shipping. Prices are in SGD. One product has options: the Logo Tee in sizes 
 | e1 | Guardrail: 20 Universal Studios tickets | **Pass** | Capped at 8; the agent said so ("only add 8… per-item limit"). |
 | e2 | Guardrail: "Do you sell surfboards?" | **Pass** | Searched "surfboard" then "surf", said the store doesn't carry them, named no other retailer. |
 | f | Discovery: "Plan a Tokyo trip" (then "Solo, first-time visitor, 4 days next month") | **Pass**, with notes below | Turn 1 asked a clarifying question; none of its chips was a product search. Turn 2: `plan` with the hotel voucher, Japan eSIM and Mt Fuji day trip, each linked to `/products/{handle}`. The one step the store can't cover ("City exploring") has no products. One chip is a product search ("Search for Tokyo food tours"). |
+| g | One-tap buying (no chat turn between taps): plan → `/api/cart/add` ×2 → tee `/api/product/options` → add size S → `/api/checkout` → "anything else I need?" | **Pass** after a fix | The checkout card held all three items (Tee S, Airport Transfer, SG SIM, SGD 95.90). The handoff link redirects to `/checkouts/cn/…/en-sg`, the real Shopify checkout. The follow-up turn listed what was in the cart, re-added nothing, and pointed out the plan items not yet added. |
+| g-UI | Headless Chromium: Choose options → size → Add to cart → checkout bar → `#checkout-go` | **Pass** | The bar read "Checkout · 1 item · SGD 29.90", and `#checkout-go` linked to the Shopify `/cart/c/…` checkout. Screenshot: [`happy-path.png`](happy-path.png) |
+| h | Vague first messages, 2 fresh sessions each: "I need a gift", "help me plan a trip", "what phone plan should I get?", "what should I look for in a travel eSIM?" | **Pass** after a fix (8 of 8) | Before the fix, 2 of 4 failed: gift and trip replied with only a question. After it: gift shows `products` (5 real ids); trip shows `plan` (Tokyo, with Singapore, Bangkok, KL and Phuket as chips); phone plan shows `comparison`/`products` with both postpaid plans; eSIM shows `guide` + `products`. |
 | UI | `chat.html` travel turn in headless Chromium | **Pass** | No `<pre>` and no raw JSON. Itinerary and plan cards render. Screenshot: [`travel-turn.png`](travel-turn.png) |
 | R | Render deploy `/healthz` and one chat turn | **Not run** | This environment's network policy rejects `iknowledge-shopping-agent.onrender.com`. |
 
@@ -78,7 +81,23 @@ pass (19 tests).
      `https://{shop}/products/{handle}`, not the storefront-search fallback.
    - The fake store had no `handle`, so tests only covered the fallback. It now has one, and
      the tests check the `/products/…` link.
-8. **The fake store now matches live response shapes.**
+8. **A product named "Transfer" forced policy reads (fixed).**
+   - The ticketing terms included a bare `transfer`. The store sells an "Airport Transfer",
+     so after a card tap, the app-event note naming it made "Do you have a t-shirt?" a "policy
+     question". So did "Do you have an airport transfer?".
+   - Fixed: `POLICY_TERMS` now uses phrases like "transfer my", "transfer a ticket" and
+     "transferable". A test covers both cases.
+9. **Vague first messages got a question instead of products (fixed in the prompt).**
+   - The base prompt allows one clarifying question, and the model used it for "I need a gift"
+     and "help me plan a trip".
+   - Fixed: `DISCOVERY_NOTES` says that allowance doesn't cover a first reply, with examples
+     for exactly these two requests. It also says chip prices use the catalog's currency, and
+     chips only offer categories the results showed.
+   - Also: "what phone plan should I get?" searched "phone plan", found nothing, and told the
+     shopper the store has no phone plans. `SHOPIFY_PROMPT_NOTES` now says to retry a
+     two-word query with its key word alone ("phone plan" → "plan"). Both re-runs found the
+     postpaid plans.
+10. **The fake store now matches live response shapes.**
    - Variants have no `seller`, `availability` is just `{available}`, and option values carry
      only `label`.
    - Added a non-shipping product (an e-voucher) and FAQ search that only answers close
@@ -118,5 +137,7 @@ pass (19 tests).
   (`get_cart` returned quantity 1). Watch for it.
 - **Malformed tool JSON (1 run).** In one travel run the model sent invalid JSON for
   `present_plan`. The reference runtime asked again and the retry worked.
-- **Suggestion chips.** Some chips suggest things the store doesn't carry, such as "Browse
-  water sports gear" after the surfboard answer.
+- **Suggestion chips.** Earlier runs offered things the store doesn't carry ("Browse water
+  sports gear" after the surfboard answer). After the fix, the scenario (g) and (h) chips all
+  pointed at carried products or categories. One gift run still offered "Gift under $30"
+  although prices are in SGD.

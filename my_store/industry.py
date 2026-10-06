@@ -57,8 +57,16 @@ POLICY_TERMS: tuple[str, ...] = (
     "all-in",
     "face value",
     "waitlist",
-    "transfer",
-    "transfers",
+    # Not a bare "transfer": stores sell airport transfers, and a product title in a
+    # question or an app-event note would force a policy read on a shopping turn.
+    "transferable",
+    "transfer my",
+    "transfer a ticket",
+    "transfer the ticket",
+    "transfer tickets",
+    "transfer a booking",
+    "transfer the booking",
+    "ticket transfer",
     "resale",
     "sold out",
     "postponed",
@@ -78,8 +86,13 @@ SEARCH_NOTES = (
 # Every recommendation should end on something the shopper can open and buy.
 DISCOVERY_NOTES = (
     "Show products in your first reply to any shopping request, however vague: do not ask "
-    "a question before showing options. Assume the likeliest details, say the assumption "
-    "in one short line, and put the alternatives in the chips as one-tap refinements. "
+    "a question before showing options. On this store the one-clarifying-question allowance "
+    "does not cover a first reply: a missing recipient, budget, destination, or date is never "
+    "a reason to reply with only a question. Assume the likeliest details, say the assumption "
+    "in one short line, and put the alternatives in the chips as one-tap refinements. For "
+    "example, 'I need a gift' searches 'gift' and shows picks across a few price points; "
+    "'help me plan a trip' with no destination searches 'tour' and 'pass', shows two or "
+    "three destinations the catalog covers, and lets the chips pick one. "
     "Recommendations lead to products. Before you present a plan, itinerary, guide, or "
     "comparison, search the catalog for each step or need it covers and attach the "
     "matching product_ids; run several searches when steps differ. When a step is "
@@ -88,7 +101,9 @@ DISCOVERY_NOTES = (
     "guide, show the products it points to with present_products when any match. Of "
     "the turn's suggestion chips, make at least one a concrete next product search "
     "('Show more Tokyo day tours', 'Compare eSIM data plans'), and offer chips only for "
-    "products and categories this session's results show the store carries. Product "
+    "products and categories this session's results show the store carries (no chip for a "
+    "destination, country, or category no result showed). Write any budget or price in a "
+    "chip in the catalog's currency, as the results show it. Product "
     "cards have their own Choose options, Add to cart, and Checkout buttons, so the "
     "shopper can buy straight from a card; you do not need to ask before they tap."
 )

@@ -74,8 +74,9 @@ _FALLBACK_POLICY_QUERIES = ("What is your return policy?", "What is your shippin
 # What this backend needs the model to know about Shopify, added to the system prompt.
 SHOPIFY_PROMPT_NOTES = (
     "The store's search matches every word of a query, so a long query often finds nothing: "
-    "search one or two key words (e.g. 'Singapore', 'tour', 'plan'), and try a single word "
-    "before concluding the store does not carry something. "
+    "search one or two key words (e.g. 'Singapore', 'tour', 'plan'). When a two-word query "
+    "finds nothing, search its key word alone ('phone plan' -> 'plan') before switching to a "
+    "neighbouring category or concluding the store does not carry something. "
     "The checkout card's 'Check out securely' button opens the store's own Shopify checkout, "
     "where the customer enters contact, delivery, and payment details and places the order; "
     "say that, rather than that they confirm in the app."

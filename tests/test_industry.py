@@ -50,6 +50,23 @@ def test_config_carries_every_verticals_vocabulary():
     assert {"present_itinerary", "present_plan_comparison"} <= names
 
 
+async def test_a_product_named_transfer_is_not_a_policy_question():
+    from commerce_common.grounding import matches_terms_and_cues
+
+    config = shopify_agent_config(**industry_config_overrides())
+
+    def fires(text: str) -> bool:
+        return matches_terms_and_cues(text, config.policy_intent_terms, config.policy_intent_cues)
+
+    # Live: the store sells "Airport Transfer - Singapore", and the app-event note after a
+    # card tap named it, which forced a policy read on "Do you have a t-shirt?".
+    note = "[App events since your last reply: Customer tapped Add to cart on Airport Transfer - Singapore.]"
+    assert not fires(f"{note} Do you have a t-shirt?")
+    assert not fires("Do you have an airport transfer?")
+    assert fires("Can I transfer my ticket to a friend?")
+    assert fires("Can I transfer or resell a booking?")
+
+
 async def test_itinerary_fills_days_from_seen_products(executor):
     await executor.execute("search_products", {"query": "merino tee tent"})
     out = await executor.execute(
