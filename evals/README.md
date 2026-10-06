@@ -55,7 +55,7 @@ evals to decide whether a change is safe, and the funnel to see what shoppers ac
   `max_turns` and `goal_items`, and a simulated shopper (`judge.py`) plays it.
 - `expected` keys are code graders (`graders.py`): `first_tool`, `calls_tool`,
   `calls_one_of`, `never_calls`, `ui_components`, `ui_any`, `no_ui_components`,
-  `products_shown_min`, `products_shown_title`, `products_not_shown_title`,
+  `products_shown_min`, `products_shown_title`, `products_shown_title_any`, `products_not_shown_title`,
   `cart_contains`, `cart_not_contains`, `cart_quantity`, `cart_item_count`,
   `checkout_handoff`, `reply_includes`, `reply_includes_any`, `reply_omits`,
   `max_tool_calls`, `max_latency_s`. The `rubric` key goes to the judge: one PASS

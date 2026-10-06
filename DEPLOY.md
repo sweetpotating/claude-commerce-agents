@@ -63,6 +63,8 @@ with `SHOPIFY_STORE_DOMAIN` set to the trial store and point that store's script
 | `SESSIONS_PER_HOUR` | 20 | new chats per hour from one IP |
 | `TURNS_PER_SESSION` | 40 | messages in one chat |
 | `SESSION_IDLE_MINUTES` | 120 | idle chats are dropped |
+| `METRICS_TOKEN` | (unset) | set it to read the conversion funnel at `/api/metrics?token=...`; unset, that page does not exist |
+| `CHECKOUT_UTM_SOURCE` | (unset) | e.g. `assistant`: tags checkout links so Shopify's reports show orders that came through the chat |
 | `STORE_CONTACT_EMAIL` | tanyueting96@gmail.com | where the assistant sends shoppers who ask for a person |
 | `WIDGET_SHOPS` | `SHOPIFY_STORE_DOMAIN` | myshopify domains where the chat bubble shows (comma-separated); on any other store, a trial store for example, it stays hidden |
 

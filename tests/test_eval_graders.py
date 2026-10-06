@@ -62,3 +62,26 @@ def test_a_null_turn_fails_the_checks_that_matter():
     ):
         assert not results[key][0], key
     assert grade({"expected": {"no_such_grader": 1}}, [empty])["no_such_grader"][0] is False
+
+
+def test_an_outage_is_reported_apart_from_agent_failures():
+    from evals.runner import summarize
+
+    outage = turn_record("hi", [("error", {"message": "Our assistant is unavailable right now."})], 0.1)
+    assert outage["infra_error"]
+    answered = turn_record("hi", parse_sse(SSE), 1.0)
+    assert not answered["infra_error"]
+    rows = [
+        {"id": "a", "status": "infra_error", "passed": False, "tags": [], "latency_s": [], "cost_usd": 0},
+        {
+            "id": "b",
+            "status": "ok",
+            "passed": True,
+            "tags": [],
+            "latency_s": [1.0],
+            "cost_usd": 0.01,
+            "first_product_turn": 1,
+        },
+    ]
+    summary = summarize(rows, [{"id": "a", "flow": "f"}, {"id": "b", "flow": "f"}])
+    assert summary["infra_errors"] == 1 and summary["pass_rate"] == 1.0 and summary["cases"] == 1

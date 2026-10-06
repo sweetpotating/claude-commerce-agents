@@ -16,7 +16,11 @@ merchant agents). The owner is connecting the shopping agent to their own Shopif
 - `my_store/industry.py`: the travel, telecom, and ticketing verticals' additions on Shopify
   (itinerary card, plan table, policy terms); `chat.html` renders every component.
 - `my_store/app.py`: FastAPI host; `STORE_BACKEND=shopify` selects the Shopify backend. `GET /`
-  serves `my_store/static/chat.html`, a browser chat over the API.
+  serves `my_store/static/chat.html`, a browser chat over the API. `executor.py` (cart rules),
+  `discovery.py` (products first, chips), `funnel.py` (live conversion funnel, `/api/metrics`).
+- `evals/`: the eval suite on the live store (`python -m evals.runner`, `evals/README.md`);
+  `scripts/loop.sh` runs lint -> tests -> smoke -> evals. `docs/COMPARISON.md`: vs Shopify Inbox.
+  An eval turn that errors with no model output is an outage (e.g. API credit), not a failure.
 
 ## Setup in a fresh session
 

@@ -1,32 +1,211 @@
 [
-  {"id": "cart-001-add-variant", "priority": "critical", "tags": ["cart", "conversion"],
-   "state": {"seen": ["iKnowledge Logo Tee"]},
-   "turns": ["Add the logo tee in size M to my cart"],
-   "expected": {"calls_tool": ["add_to_cart"], "cart_contains": ["logo tee - m"], "cart_item_count": 1}},
-  {"id": "cart-002-add-plain-product", "priority": "critical", "tags": ["cart", "conversion"],
-   "state": {"seen": ["Bookworm Ceramic Mug"]},
-   "turns": ["add the mug to my cart"],
-   "expected": {"cart_contains": ["bookworm ceramic mug"], "reply_omits": ["sold out"]}},
-  {"id": "cart-003-add-by-name-unseen", "priority": "high", "tags": ["cart", "conversion"],
-   "turns": ["Add the Japan eSIM to my cart"],
-   "expected": {"cart_contains": ["japan esim"], "cart_item_count": 1}},
-  {"id": "cart-004-update-quantity", "priority": "critical", "tags": ["cart"],
-   "state": {"seen": ["Bookworm Ceramic Mug", "Japan eSIM"], "cart": [{"title": "Bookworm Ceramic Mug"}, {"title": "Japan eSIM"}]},
-   "turns": ["Make it 2 mugs"],
-   "expected": {"cart_quantity": {"bookworm ceramic mug": 2, "japan esim": 1}}},
-  {"id": "cart-005-remove", "priority": "critical", "tags": ["cart"],
-   "state": {"seen": ["Bookworm Ceramic Mug", "Japan eSIM"], "cart": [{"title": "Bookworm Ceramic Mug"}, {"title": "Japan eSIM"}]},
-   "turns": ["Remove the eSIM"],
-   "expected": {"cart_contains": ["bookworm ceramic mug"], "cart_not_contains": ["esim"]}},
-  {"id": "cart-006-two-items-one-message", "priority": "high", "tags": ["cart", "conversion"],
-   "turns": ["Add a Bookworm mug and the Mt Fuji day trip to my cart"],
-   "expected": {"cart_contains": ["bookworm ceramic mug", "mt fuji"]}},
-  {"id": "cart-007-quantity-cap", "priority": "high", "tags": ["cart", "guardrail"],
-   "state": {"seen": ["Universal Studios Singapore Ticket"]},
-   "turns": ["I want 20 Universal Studios tickets in my cart"],
-   "expected": {"cart_quantity": {"universal studios": 8},
-     "rubric": "PASS if the reply tells the shopper the cart holds 8 because 8 is the per-item limit. FAIL if it says 20 were added or does not mention the limit."}},
-  {"id": "cart-008-whats-in-cart-empty", "priority": "medium", "tags": ["cart", "negative"],
-   "turns": ["what's in my cart?"],
-   "expected": {"never_calls": ["add_to_cart"], "reply_omits": ["usd"]}}
+ {
+  "id": "cart-001-add-variant",
+  "priority": "critical",
+  "tags": [
+   "cart",
+   "conversion"
+  ],
+  "state": {
+   "seen": [
+    "iKnowledge Logo Tee"
+   ]
+  },
+  "turns": [
+   "Add the logo tee in size M to my cart"
+  ],
+  "expected": {
+   "calls_tool": [
+    "add_to_cart"
+   ],
+   "cart_contains": [
+    "logo tee - m"
+   ],
+   "cart_item_count": 1
+  }
+ },
+ {
+  "id": "cart-002-add-plain-product",
+  "priority": "critical",
+  "tags": [
+   "cart",
+   "conversion"
+  ],
+  "state": {
+   "seen": [
+    "Bookworm Ceramic Mug"
+   ]
+  },
+  "turns": [
+   "add the mug to my cart"
+  ],
+  "expected": {
+   "cart_contains": [
+    "bookworm ceramic mug"
+   ],
+   "reply_omits": [
+    "sold out"
+   ]
+  }
+ },
+ {
+  "id": "cart-003-add-by-name-unseen",
+  "priority": "high",
+  "tags": [
+   "cart",
+   "conversion"
+  ],
+  "turns": [
+   "Add the Japan eSIM to my cart"
+  ],
+  "expected": {
+   "cart_contains": [
+    "japan esim"
+   ],
+   "cart_item_count": 1
+  }
+ },
+ {
+  "id": "cart-004-update-quantity",
+  "priority": "critical",
+  "tags": [
+   "cart"
+  ],
+  "state": {
+   "seen": [
+    "Bookworm Ceramic Mug",
+    "Japan eSIM"
+   ],
+   "cart": [
+    {
+     "title": "Bookworm Ceramic Mug"
+    },
+    {
+     "title": "Japan eSIM"
+    }
+   ]
+  },
+  "turns": [
+   "Make it 2 mugs"
+  ],
+  "expected": {
+   "cart_quantity": {
+    "bookworm ceramic mug": 2,
+    "japan esim": 1
+   }
+  }
+ },
+ {
+  "id": "cart-005-remove",
+  "priority": "critical",
+  "tags": [
+   "cart"
+  ],
+  "state": {
+   "seen": [
+    "Bookworm Ceramic Mug",
+    "Japan eSIM"
+   ],
+   "cart": [
+    {
+     "title": "Bookworm Ceramic Mug"
+    },
+    {
+     "title": "Japan eSIM"
+    }
+   ]
+  },
+  "turns": [
+   "Remove the eSIM"
+  ],
+  "expected": {
+   "cart_contains": [
+    "bookworm ceramic mug"
+   ],
+   "cart_not_contains": [
+    "esim"
+   ]
+  }
+ },
+ {
+  "id": "cart-006-two-items-one-message",
+  "priority": "high",
+  "tags": [
+   "cart",
+   "conversion"
+  ],
+  "turns": [
+   "Add a Bookworm mug and the Mt Fuji day trip to my cart"
+  ],
+  "expected": {
+   "cart_contains": [
+    "bookworm ceramic mug",
+    "mt fuji"
+   ]
+  }
+ },
+ {
+  "id": "cart-007-quantity-cap",
+  "priority": "high",
+  "tags": [
+   "cart",
+   "guardrail"
+  ],
+  "state": {
+   "seen": [
+    "Universal Studios Singapore Ticket"
+   ]
+  },
+  "turns": [
+   "I want 20 Universal Studios tickets in my cart"
+  ],
+  "expected": {
+   "cart_quantity": {
+    "universal studios": 8
+   },
+   "rubric": "PASS if the reply tells the shopper the cart holds 8 because 8 is the per-item limit. FAIL if it says 20 were added or does not mention the limit."
+  }
+ },
+ {
+  "id": "cart-008-whats-in-cart-empty",
+  "priority": "medium",
+  "tags": [
+   "cart",
+   "negative"
+  ],
+  "turns": [
+   "what's in my cart?"
+  ],
+  "expected": {
+   "never_calls": [
+    "add_to_cart"
+   ],
+   "reply_omits": [
+    "usd"
+   ]
+  }
+ },
+ {
+  "id": "cart-009-cross-sell-after-add",
+  "priority": "medium",
+  "tags": [
+   "cart",
+   "conversion",
+   "hard"
+  ],
+  "state": {
+   "seen": [
+    "Japan eSIM"
+   ]
+  },
+  "turns": [
+   "Add the Japan eSIM to my cart"
+  ],
+  "expected": {
+   "cart_contains": [
+    "japan esim"
+   ],
+   "rubric": "PASS if, after confirming the add, the reply or its chips offer exactly the kind of related item a traveller to Japan would need from this store (such as a Japan tour, travel insurance, a travel adapter, or a Tokyo hotel voucher), without adding it. FAIL if it offers nothing related to the trip, or adds something the shopper did not ask for."
+  }
+ }
 ]

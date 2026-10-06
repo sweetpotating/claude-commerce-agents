@@ -45,7 +45,7 @@ from . import discovery, guards
 from .backend import MyStoreBackend
 from .executor import StoreToolExecutor
 from .funnel import CLIENT_EVENTS, PRODUCT_COMPONENTS, funnel
-from .industry import industry_config_overrides, industry_extensions
+from .industry import CONTACT_EMAIL, industry_config_overrides, industry_extensions
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
 
 logger = logging.getLogger(__name__)
@@ -186,6 +186,24 @@ async def start_session(body: StartSession, request: Request) -> dict:
     return {"session_id": s.session_id}
 
 
+def shopper_error(error: Exception) -> tuple[str, str]:
+    """What a failed turn tells the shopper. When the model itself is unavailable (out of
+    credit, rate-limited, overloaded), the cart and checkout still work and a person is a
+    message away, so the reply says that instead of a dead-end "something went wrong"."""
+    import anthropic  # noqa: PLC0415
+
+    saved = f"Your cart is saved and checkout still works, or email {CONTACT_EMAIL} for help."
+    if isinstance(error, anthropic.BadRequestError) and "credit balance" in str(error).lower():
+        return "model_unavailable", f"Our assistant is unavailable right now. {saved}"
+    if isinstance(error, anthropic.AuthenticationError | anthropic.PermissionDeniedError):
+        return "model_unavailable", f"Our assistant is unavailable right now. {saved}"
+    if isinstance(
+        error, anthropic.RateLimitError | anthropic.InternalServerError | anthropic.APIConnectionError
+    ):
+        return "model_busy", f"Our assistant is busy. Please try again in a minute. {saved}"
+    return "turn_failed", "Something went wrong. Please try again."
+
+
 async def remember_page_product(s: Session, page: PageContext | None) -> Any:
     """The product on the shopper's current page, looked up and counted as seen, so "add
     this to my cart" or "does it come in M?" works without a search first. None when the
@@ -250,7 +268,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         # products this reply showed, so the shopper always has a next step to tap.
         # A tapped chip always leads to products: when its reply showed none, the host adds
         # the closest ones found, above the chips (which it holds back until then).
-        has_chips, titles, held = False, [], []
+        has_chips, titles, held, outage = False, [], [], False
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
@@ -274,9 +292,12 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                         continue
                 yield to_sse(event)
             failed = False
-        except Exception:
-            logger.exception("chat turn failed")
-            yield to_sse(AgentEvent.error("Something went wrong. Please try again."))
+        except Exception as error:
+            kind, message = shopper_error(error)
+            logger.exception("chat turn failed (%s)", kind)
+            funnel.record(s.session_id, "assistant_error", kind=kind)
+            outage = kind.startswith("model_")
+            yield to_sse(AgentEvent.error(message))
             failed = True
         if search_chip and not titles and not failed:
             cards = discovery.fallback_products(s.state)
@@ -285,7 +306,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                 yield to_sse(AgentEvent.ui("products", cards))
         for event in held:
             yield to_sse(event)
-        if not has_chips:
+        if not has_chips and not outage:  # during an outage a chip would only fail again
             chips = discovery.fallback_chips(titles)
             yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
         if not failed:

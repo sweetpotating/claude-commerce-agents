@@ -1,22 +1,160 @@
 [
-  {"id": "persona-001-gift-mum", "priority": "critical", "tags": ["persona", "conversion"],
-   "persona": "You want a birthday gift for your mum who loves reading and music. Budget about 60 SGD. You will buy one item that fits.",
-   "opening": "hi, I need a birthday gift for my mum", "max_turns": 6, "goal_items": [],
-   "expected": {}},
-  {"id": "persona-002-japan-esim", "priority": "critical", "tags": ["persona", "conversion"],
-   "persona": "You fly to Tokyo for 6 days next week and need mobile data there. You want the Japan eSIM and you are open to one day tour.",
-   "opening": "I'm going to Tokyo next week, need data", "max_turns": 6, "goal_items": ["japan esim"],
-   "expected": {}},
-  {"id": "persona-003-tee-m", "priority": "critical", "tags": ["persona", "conversion"],
-   "persona": "You want the store's logo t-shirt in size M for yourself. Nothing else.",
-   "opening": "do you have t-shirts?", "max_turns": 5, "goal_items": ["logo tee - m"],
-   "expected": {}},
-  {"id": "persona-004-phone-plan", "priority": "high", "tags": ["persona", "conversion"],
-   "persona": "You want a monthly mobile plan. You stream video a lot on your commute, so you want plenty of data. You pick the plan that fits.",
-   "opening": "what phone plans do you have?", "max_turns": 5, "goal_items": ["plus 100gb"],
-   "expected": {}},
-  {"id": "persona-005-family-night", "priority": "high", "tags": ["persona", "conversion"],
-   "persona": "You want something fun for a family night in with two kids aged 8 and 11, under 70 SGD. You buy one thing.",
-   "opening": "ideas for a family games night?", "max_turns": 6, "goal_items": [],
-   "expected": {}}
+ {
+  "id": "persona-001-gift-mum",
+  "priority": "critical",
+  "tags": [
+   "persona",
+   "conversion"
+  ],
+  "persona": "You want a birthday gift for your mum who loves reading and music. Budget about 60 SGD. You will buy one item that fits.",
+  "opening": "hi, I need a birthday gift for my mum",
+  "max_turns": 6,
+  "goal_items": [],
+  "expected": {}
+ },
+ {
+  "id": "persona-002-japan-esim",
+  "priority": "critical",
+  "tags": [
+   "persona",
+   "conversion"
+  ],
+  "persona": "You fly to Tokyo for 6 days next week and need mobile data there. You want the Japan eSIM and you are open to one day tour.",
+  "opening": "I'm going to Tokyo next week, need data",
+  "max_turns": 6,
+  "goal_items": [
+   "japan esim"
+  ],
+  "expected": {}
+ },
+ {
+  "id": "persona-003-tee-m",
+  "priority": "critical",
+  "tags": [
+   "persona",
+   "conversion"
+  ],
+  "persona": "You want the store's logo t-shirt in size M for yourself. Nothing else.",
+  "opening": "do you have t-shirts?",
+  "max_turns": 5,
+  "goal_items": [
+   "logo tee - m"
+  ],
+  "expected": {}
+ },
+ {
+  "id": "persona-004-phone-plan",
+  "priority": "high",
+  "tags": [
+   "persona",
+   "conversion"
+  ],
+  "persona": "You want a monthly mobile plan. You stream video a lot on your commute, so you want plenty of data. You pick the plan that fits.",
+  "opening": "what phone plans do you have?",
+  "max_turns": 5,
+  "goal_items": [
+   "plus 100gb"
+  ],
+  "expected": {}
+ },
+ {
+  "id": "persona-005-family-night",
+  "priority": "high",
+  "tags": [
+   "persona",
+   "conversion"
+  ],
+  "persona": "You want something fun for a family night in with two kids aged 8 and 11, under 70 SGD. You buy one thing.",
+  "opening": "ideas for a family games night?",
+  "max_turns": 6,
+  "goal_items": [],
+  "expected": {}
+ },
+ {
+  "id": "persona-006-unavailable-size",
+  "priority": "high",
+  "tags": [
+   "persona",
+   "conversion",
+   "hard"
+  ],
+  "persona": "You want the store's logo t-shirt in size L. If L can't be bought, you would accept size M as a gift for a friend instead. You buy one tee.",
+  "opening": "do you have the logo tee in large?",
+  "max_turns": 6,
+  "goal_items": [
+   "logo tee"
+  ],
+  "expected": {}
+ },
+ {
+  "id": "persona-007-trip-basket",
+  "priority": "high",
+  "tags": [
+   "persona",
+   "conversion",
+   "hard"
+  ],
+  "persona": "You fly to Bangkok for 8 days. You want mobile data for Thailand, travel insurance, and a travel adapter, all in one order. You check out once all three are in the cart.",
+  "opening": "packing for Bangkok next week, what do I need?",
+  "max_turns": 8,
+  "goal_items": [
+   "thailand esim",
+   "travel insurance",
+   "travel adapter"
+  ],
+  "expected": {}
+ },
+ {
+  "id": "persona-008-cheapest",
+  "priority": "high",
+  "tags": [
+   "persona",
+   "conversion",
+   "hard"
+  ],
+  "persona": "You are visiting Korea for 5 days and want the cheapest way to have mobile data there. You buy the cheapest option that covers Korea.",
+  "opening": "cheapest data option for korea?",
+  "max_turns": 5,
+  "goal_items": [
+   "korea esim"
+  ],
+  "expected": {}
+ },
+ {
+  "id": "persona-009-product-page-hesitant",
+  "priority": "high",
+  "tags": [
+   "persona",
+   "conversion",
+   "page",
+   "hard"
+  ],
+  "state": {
+   "page": {
+    "page_type": "product",
+    "product_id": "gid://shopify/Product/9061072011454"
+   }
+  },
+  "persona": "You are on the logo tee's product page. Before buying you want to know if you can return it if it doesn't fit and how long shipping takes. If the answers are reasonable you buy it in size S.",
+  "opening": "can I return this if it doesn't fit?",
+  "max_turns": 6,
+  "goal_items": [
+   "logo tee - s"
+  ],
+  "expected": {}
+ },
+ {
+  "id": "persona-010-typos-gamer",
+  "priority": "medium",
+  "tags": [
+   "persona",
+   "conversion",
+   "hard"
+  ],
+  "persona": "You type quickly with typos. You want a present for your boyfriend who likes gaming, under 60 SGD. You buy one gaming-related item.",
+  "opening": "pls recomend sumthing 4 my bf who likes gaming under 60",
+  "max_turns": 6,
+  "goal_items": [],
+  "expected": {}
+ }
 ]

@@ -49,3 +49,20 @@ def test_card_adds_and_checkout_clicks_reach_the_funnel(monkeypatch):
 def test_metrics_do_not_exist_without_a_token(monkeypatch):
     monkeypatch.delenv("METRICS_TOKEN", raising=False)
     assert TestClient(host.app).get("/api/metrics?token=").status_code == 404
+
+
+def test_a_model_outage_tells_the_shopper_their_cart_and_checkout_still_work():
+    import anthropic
+    import httpx
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    no_credit = anthropic.BadRequestError(
+        "Your credit balance is too low to access the Anthropic API.",
+        response=httpx.Response(400, request=request),
+        body=None,
+    )
+    kind, message = host.shopper_error(no_credit)
+    assert kind == "model_unavailable" and "checkout still works" in message and "@" in message
+    busy = anthropic.RateLimitError("slow down", response=httpx.Response(429, request=request), body=None)
+    assert host.shopper_error(busy)[0] == "model_busy"
+    assert host.shopper_error(ValueError("bug")) == ("turn_failed", "Something went wrong. Please try again.")

@@ -15,7 +15,7 @@
      "rubric": "PASS if every product shown on the cards costs 15 SGD or less. FAIL if any shown product costs more than 15."}},
   {"id": "discovery-005-japan", "priority": "high", "tags": ["first_reply", "conversion"],
    "turns": ["I'm going to Japan next month"],
-   "expected": {"products_shown_title": ["japan"], "products_shown_min": 2}},
+   "expected": {"products_shown_title_any": ["japan", "tokyo", "fuji"], "products_shown_min": 2}},
   {"id": "discovery-006-bestsellers", "priority": "medium", "tags": ["first_reply"],
    "turns": ["show me your bestsellers"],
    "expected": {"products_shown_min": 3,

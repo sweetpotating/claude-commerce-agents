@@ -115,6 +115,9 @@ def turn_record(user: str, events: list[tuple[str, dict]], secs: float) -> dict:
             turn["error"] = d.get("message")
         elif event == "turn_complete":
             turn["usage"] = d.get("usage") or {}
+    # A turn that errors before any model output is an outage (credit, rate limit, network),
+    # not the agent's behaviour; the runner reports it apart and stops counting it.
+    turn["infra_error"] = bool(turn["error"]) and not turn["usage"] and not turn["tools"]
     return turn
 
 
@@ -350,6 +353,8 @@ async def run_case(case: dict, trial: int, http, host, judge_on: bool) -> dict:
     except Exception as error:
         checks = {"run": (False, f"run error: {error!r}")}
         row["status"] = "error"
+    if any(t.get("infra_error") for t in chat.turns):
+        row["status"] = "infra_error"
     row["checks"] = {k: {"passed": ok, "detail": detail} for k, (ok, detail) in checks.items()}
     if judge_on and case.get("expected", {}).get("rubric") and row["status"] == "ok":
         row["judge"] = await judge(case["expected"]["rubric"], chat.turns)
@@ -373,6 +378,8 @@ async def run_case(case: dict, trial: int, http, host, judge_on: bool) -> dict:
 
 
 def summarize(rows: list[dict], cases: list[dict]) -> dict:
+    infra = [r for r in rows if r["status"] == "infra_error"]
+    rows = [r for r in rows if r["status"] != "infra_error"]
     by_case: dict[str, list[dict]] = {}
     for r in rows:
         by_case.setdefault(r["id"], []).append(r)
@@ -390,6 +397,7 @@ def summarize(rows: list[dict], cases: list[dict]) -> dict:
     latencies = [s for r in rows for s in r["latency_s"]]
     first_reply = [r for r in rows if "first_reply" in r["tags"]]
     return {
+        "infra_errors": len(infra),
         "cases": len(by_case),
         "trials": len(rows),
         "pass_rate": rate(case_pass),
@@ -439,7 +447,7 @@ def compare(summary: dict) -> dict:
         "newly_failing": sorted(i for i, p in now.items() if p < 0.5 <= before.get(i, 0)),
         "newly_passing": sorted(i for i, p in now.items() if p >= 0.5 > before.get(i, 1)),
         "pass_rate_delta": round(summary["pass_rate"] - base["pass_rate"], 3)
-        if base.get("pass_rate") is not None
+        if None not in (base.get("pass_rate"), summary["pass_rate"])
         else None,
     }
 
@@ -532,9 +540,17 @@ async def main(argv: list[str] | None = None) -> int:
     write_markdown(stamp, summary, diff, list(rows), out / "summary.md")
     (RESULTS / "latest.md").write_text((out / "summary.md").read_text())
     print("\n" + (out / "summary.md").read_text())
-    if args.update_baseline:
+    if args.update_baseline and not summary["infra_errors"]:
         BASELINE.write_text(json.dumps(summary, indent=1) + "\n")
         print(f"baseline updated to {stamp}")
+    if summary["infra_errors"]:
+        print(
+            f"\n!! {summary['infra_errors']} trials hit an outage (model or store unreachable, e.g. "
+            "out of API credit) and were left out of every number above. Fix that and re-run."
+        )
+        if args.update_baseline:
+            print("baseline NOT updated: the run is incomplete")
+        return 3
     regressions = diff.get("newly_failing") or []
     return 1 if summary["critical_failing"] or regressions else 0
 

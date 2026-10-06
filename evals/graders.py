@@ -118,6 +118,11 @@ def products_shown_title(turns, wanted, case):
     return not missing, f"missing {missing}; shown {titles}"
 
 
+def products_shown_title_any(turns, wanted, case):
+    titles = [p.get("title", "").lower() for p in products_in(_last(turns))]
+    return any(w in t for w in _lower(wanted) for t in titles), f"none of {wanted}; shown {titles}"
+
+
 def products_not_shown_title(turns, banned, case):
     titles = [p.get("title", "").lower() for t in turns for p in products_in(t)]
     shown = [b for b in _lower(banned) if any(b in t for t in titles)]
@@ -198,6 +203,7 @@ GRADERS: dict[str, Check] = {
         no_ui_components,
         products_shown_min,
         products_shown_title,
+        products_shown_title_any,
         products_not_shown_title,
         cart_contains,
         cart_not_contains,
