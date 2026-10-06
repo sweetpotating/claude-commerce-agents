@@ -164,9 +164,23 @@ BRAND_VOICE = (
 )
 
 
+# The model the chat runs on. Unset: the reference default (Claude Sonnet 5, thinking at low
+# effort). STORE_AGENT_MODEL=claude-haiku-4-5 halves the per-token price ($1/$5 vs $2/$10 per
+# million); Haiku 4.5 does not take the effort setting, so thinking is turned off for it.
+# Run the evals before and after switching: Haiku follows long rule lists less reliably.
+def model_overrides() -> dict[str, Any]:
+    model = os.environ.get("STORE_AGENT_MODEL", "").strip()
+    if not model:
+        return {}
+    out: dict[str, Any] = {"model": model}
+    if model.startswith("claude-haiku"):
+        out["thinking_effort"] = None
+    return out
+
+
 def industry_config_overrides() -> dict[str, Any]:
     """Settings layered over the Shopify config (``shopify_agent_config``)."""
-    return {
+    return model_overrides() | {
         "brand_voice": BRAND_VOICE,
         "domain_search_notes": " ".join(
             (

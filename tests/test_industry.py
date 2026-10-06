@@ -170,3 +170,14 @@ def test_a_person_is_always_reachable():
     for text in ("I want to talk to a human", "how do I contact support?", "can I speak to someone"):
         assert not discovery.shopping_request(text), text
     assert discovery.shopping_request("I need a gift for a person who loves books")
+
+
+def test_the_model_can_be_switched_to_haiku(monkeypatch):
+    from my_store.industry import industry_config_overrides
+    from my_store.shopify_backend import shopify_agent_config
+
+    assert "model" not in industry_config_overrides()
+    monkeypatch.setenv("STORE_AGENT_MODEL", "claude-haiku-4-5")
+    config = shopify_agent_config(**industry_config_overrides())
+    assert config.model == "claude-haiku-4-5"
+    assert config.thinking_request_fields() == {"thinking": {"type": "disabled"}}  # no effort field
