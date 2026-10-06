@@ -30,6 +30,31 @@ non-shipping. Prices are in SGD. One product has options: the Logo Tee in sizes 
 Checks after the fixes: `ruff check .`, `ruff format --check .`, and `python -m pytest -q` all
 pass (19 tests).
 
+### Round (i): regression of the core features (after the live "object can not be found" drop)
+
+This round ran on `208c40f` (keep-alive every 10s, no-buffer headers, compare-at-once rule)
+plus the fixes below, with a local uvicorn and the live store (`SG`). "Longest gap" is the
+longest silence between SSE events. If it never reaches 10s, no keep-alive is needed. The
+keep-alive itself is covered by `test_chat_stream_sends_keepalives_while_a_turn_is_quiet`.
+
+| # | Check | Result | Components | Turn time | Longest gap | Errors |
+|---|---|---|---|---|---|---|
+| i1 | One session: "Plan a 2-day trip", then `/api/cart/add` | **Pass** | `itinerary` (City Pass, Universal Studios), `suggestions`; the add returned 200 | 12.7s | 2.3s | none |
+| i2 | Same session: chip "Compare two tours" | **Pass**, no "which two?" question | `comparison` (KL City Tour vs Phuket Island Hopping) | 10.6s | 5.2s | none |
+| i3 | Same session: "Mt Fuji vs Kuala Lumpur" | **Pass** | `comparison` (Mt Fuji Day Trip vs KL City Tour). No new search was needed: both came from the trip turn's "tour" search. | 9.6s | 2.4s | none |
+| i4 | Same session: "what is the travel itinerary" | **Pass** | `itinerary`: Day 1 City Pass (in the cart), Day 2 Universal Studios, with an "Add Universal Studios ticket" chip | 8.6s | 3.7s | none |
+| i5 | Tee search → sizes → "Add a size M" | **Pass** | `products`, then `get_product_details` + `add_to_cart`; cart: Tee M ×1 | 7.9s / 8.0s | 1.9s | none |
+| i6 | "Make it 2 of the tee", "Remove the eSIM" | **Fail, then fixed** | Before the fix, the remove left the eSIM in the cart (`cart_update` still had it, subtotal 79.70) while the agent said "Removed". After: cart Tee M ×2, SGD 59.80. | 5.2–6.6s | 2.0s | none |
+| i7 | "compare your mobile plans" | **Pass** | `plan_matrix` (Starter 30GB vs Plus 100GB) | 14.1s | 2.0s | none |
+| i8 | "how many days to return?" / "are tickets refundable?" | **Pass** | `search_policies` grounded: 30 days, 7 business days for refunds; tickets non-refundable | 6.3s / 3.8s | 1.6s | none |
+| i9 | "remember I am vegetarian" → "suggest a food tour" | **Pass** | `save_memory`, then `products`. The reply warns that the street-food tours are usually meat-heavy and suggests checking with the operator. | 6.0s / 8.1s | 1.5s | none |
+| i10 | Checkout via chat and via `/api/checkout` | **Pass** | Both `checkout` cards had a `https://iknowledge-dev.myshopify.com/cart/c/…` link | 8.4s / 1.0s | 3.3s | none |
+| i11 | "Tell me about gid://shopify/Product/1" | **Pass after a fix** | Before: "That product lookup isn't working right now". After: "I couldn't find a product with that ID… it may be mistyped". The next turn ("do you have a mug?") worked normally. | 6.9s | 1.8s | none |
+
+No turn emitted an `error` event or dropped. The slowest turn took 14.1s, and the longest
+silence between events was 5.2s. The keep-alive still matters on the phone path through
+Render's proxy; this local run could not test that path.
+
 ## Findings and fixes
 
 1. **Every physical product was "sold out" at the cart (fixed by configuration).**
@@ -97,13 +122,33 @@ pass (19 tests).
      shopper the store has no phone plans. `SHOPIFY_PROMPT_NOTES` now says to retry a
      two-word query with its key word alone ("phone plan" → "plan"). Both re-runs found the
      postpaid plans.
-10. **The fake store now matches live response shapes.**
+10. **Cart edits by product id silently did nothing (fixed, round i6).**
+   - A single-variant product is added by its product id, but its cart line is a variant
+     id. So `remove_from_cart` and `update_cart_item` by product id matched no line and
+     returned the unchanged cart, and the gate told the agent "Removed".
+   - Fixed: `_line_for` maps a product id to its cart line (its default variant, or its one
+     variant in the cart).
+   - When two sizes of one product are in the cart, it names both and asks which one. When
+     nothing matches, it says "not in the cart; nothing was changed".
+   - Two tests cover this, and both fail on the old code.
+11. **An unknown product id read as an outage (fixed, round i11).**
+   - Live, `get_product` answers an unknown id with `isError` and code `product_not_found`.
+     The backend raised a generic error, so the agent said "the lookup isn't working right
+     now".
+   - Fixed: `*not_found` codes now raise `ShopifyNotFound`, and `get_product_details`
+     returns `None` ("No product with id …").
+   - The fake store uses the live error code, and a test covers it.
+12. **The fake store now matches live response shapes.**
    - Variants have no `seller`, `availability` is just `{available}`, and option values carry
      only `label`.
    - Added a non-shipping product (an e-voucher) and FAQ search that only answers close
      questions.
 
 ## Still open
+
+- **The trip reply sometimes describes products before searching.** In round i1, the first
+  sentence promised "a guided walking tour, a museum pass" before any search. The plan that
+  followed used real Singapore products. This is the model's pre-tool preamble.
 
 - **Product pages are behind the storefront password.** Every `/products/…` link (the new
   "View details" links) redirects to `/password`, so shoppers can't open them. The agent's

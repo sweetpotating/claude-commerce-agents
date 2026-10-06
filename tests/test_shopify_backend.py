@@ -147,6 +147,52 @@ async def test_checkout_without_a_buyer_ip_falls_back_to_the_cart_link(store):
     assert not any(c[0] == "create_checkout" for c in store.calls)
 
 
+async def test_a_product_added_by_its_product_id_can_be_changed_and_removed_by_it(store):
+    # Live: the agent added the eSIM by product id and later removed it by product id; the
+    # cart line is the variant, so nothing matched and the agent reported a removal anyway.
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent merino"})
+    await ex.execute("add_to_cart", {"product_id": TENT})
+    await ex.execute("get_product_details", {"product_id": TEE})
+    await ex.execute("add_to_cart", {"product_id": TEE_S})
+
+    updated = await ex.execute("update_cart_item", {"product_id": TENT, "quantity": 2})
+    assert not updated.is_error
+    lines = {li["item"]["id"]: li["quantity"] for li in next(iter(store.carts.values()))["line_items"]}
+    assert lines == {"gid://shopify/ProductVariant/201": 2, TEE_S: 1}
+
+    removed = await ex.execute("remove_from_cart", {"product_id": TENT})
+    assert not removed.is_error
+    lines = {li["item"]["id"] for li in next(iter(store.carts.values()))["line_items"]}
+    assert lines == {TEE_S}
+
+    # Not in the cart: said so, nothing claimed.
+    again = await ex.execute("remove_from_cart", {"product_id": TENT})
+    assert again.is_error and "not in the cart" in again.result_text
+
+
+async def test_a_family_id_with_two_sizes_in_the_cart_asks_which(store):
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "merino"})
+    await ex.execute("get_product_details", {"product_id": TEE})
+    await ex.execute("add_to_cart", {"product_id": TEE_S})
+    await ex.execute("add_to_cart", {"product_id": TEE_L})
+    out = await ex.execute("remove_from_cart", {"product_id": TEE})
+    assert out.is_error and TEE_S in out.result_text and TEE_L in out.result_text
+    assert len(next(iter(store.carts.values()))["line_items"]) == 2
+
+
+async def test_an_unknown_product_id_is_not_found_not_an_outage(store):
+    # Live: "Tell me about gid://shopify/Product/1" got "that lookup isn't working right now".
+    backend = make_backend(store)
+    session = ShoppingSessionContext(session_id="s1", user_id="guest-1", now=datetime(2026, 10, 6, 9))
+    assert await backend.get_product_details(session, "gid://shopify/Product/999") is None
+    out = await make_executor(backend).execute(
+        "get_product_details", {"product_id": "gid://shopify/Product/999"}
+    )
+    assert "temporarily unavailable" not in out.result_text
+
+
 async def test_removing_the_last_line_cancels_the_cart(store):
     ex = make_executor(make_backend(store))
     await ex.execute("search_products", {"query": "tent"})

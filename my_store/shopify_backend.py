@@ -87,6 +87,10 @@ class ShopifyError(RuntimeError):
     """A Shopify call failed; the executor reports the tool as temporarily unavailable."""
 
 
+class ShopifyNotFound(ShopifyError):
+    """Shopify answered that the thing asked for does not exist (e.g. product_not_found)."""
+
+
 def _money(value: Any, currency: str = "USD") -> float:
     """UCP amounts are integers in minor units ({"amount": 8900} is 89.00 USD)."""
     if isinstance(value, dict):
@@ -210,7 +214,9 @@ class ShopifyUCPBackend(StorefrontBackend):
                 content = {"text": joined}
         if result.get("isError"):
             messages = content.get("messages") if isinstance(content, dict) else None
-            raise ShopifyError(f"{tool}: {messages or content}")
+            codes = [str(m.get("code", "")) for m in messages or [] if isinstance(m, dict)]
+            error = ShopifyNotFound if any(c.endswith("not_found") for c in codes) else ShopifyError
+            raise error(f"{tool}: {messages or content}")
         return content
 
     def _context(self) -> dict[str, Any]:
@@ -317,7 +323,12 @@ class ShopifyUCPBackend(StorefrontBackend):
             catalog["selected"] = selected
         if self._context():
             catalog["context"] = self._context()
-        content = await self._call("get_product", {"catalog": catalog})
+        try:
+            content = await self._call("get_product", {"catalog": catalog})
+        except ShopifyNotFound:
+            # Live: an unknown id is an isError "product_not_found". Answering None lets the
+            # agent say there is no such product instead of "the lookup isn't working".
+            return None
         return content.get("product")
 
     async def get_product_details(
@@ -490,17 +501,36 @@ class ShopifyUCPBackend(StorefrontBackend):
         lines[variant_id] = lines.get(variant_id, 0) + quantity
         return await self._put_lines(session, lines, product_id, variant_id)
 
+    def _line_for(self, lines: dict[str, int], product_id: str) -> str:
+        """The cart line (a variant id) a product id refers to. Cart lines are variants, but a
+        single-variant product is added by its product id; seen live, "remove the eSIM" then
+        matched no line, the cart came back unchanged, and the agent said it was removed."""
+        if product_id in lines:
+            return product_id
+        matches = [
+            vid
+            for vid in lines
+            if vid == self._default_variant.get(product_id)
+            or getattr(self._variants.get(vid), "variant_of", None) == product_id
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if matches:
+            raise Unavailable(
+                f"{product_id} has {len(matches)} lines in the cart ({', '.join(matches)}); "
+                "name the one to change"
+            )
+        raise Unavailable(f"{product_id} is not in the cart; nothing was changed")
+
     async def update_cart_item(self, session: ShoppingSessionContext, product_id: str, quantity: int) -> Cart:
         lines = await self._lines(session)
-        if product_id not in lines:
-            return await self.get_cart(session)
-        lines[product_id] = quantity
-        return await self._put_lines(session, lines, product_id)
+        line = self._line_for(lines, product_id)
+        lines[line] = quantity
+        return await self._put_lines(session, lines, product_id, line)
 
     async def remove_from_cart(self, session: ShoppingSessionContext, product_id: str) -> Cart:
         lines = await self._lines(session)
-        if lines.pop(product_id, None) is None:
-            return await self.get_cart(session)
+        del lines[self._line_for(lines, product_id)]
         return await self._put_lines(session, lines, product_id)
 
     # -- Checkout: hand off to Shopify's own checkout; the agent never takes payment -------

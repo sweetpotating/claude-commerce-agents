@@ -148,7 +148,8 @@ class FakeShopifyStore:
         if pid in _VARIANTS:  # a variant id resolves to its product with that variant
             return self._result(body, {"product": _product(_VARIANTS[pid][0], [pid])})
         if pid not in _PRODUCTS:
-            return self._result(body, {"messages": [{"type": "error", "code": "not_found"}]}, True)
+            error = {"type": "error", "code": "product_not_found", "content": "Product not found"}
+            return self._result(body, {"messages": [error]}, True)  # live shape
         selected = {s["name"]: s["label"] for s in args["catalog"].get("selected", [])}
         candidates = [v for v, (p, vals, _, _) in _VARIANTS.items() if p == pid]
         matching = [
