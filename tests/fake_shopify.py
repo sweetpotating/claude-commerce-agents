@@ -23,8 +23,9 @@ _VARIANTS = {
     "gid://shopify/ProductVariant/201": ("gid://shopify/Product/2", {"Title": "Default Title"}, 22900, True),
     "gid://shopify/ProductVariant/301": ("gid://shopify/Product/3", {"Title": "Default Title"}, 1800, True),
     "gid://shopify/ProductVariant/401": ("gid://shopify/Product/4", {"Title": "Default Title"}, 8900, True),
+    "gid://shopify/ProductVariant/501": ("gid://shopify/Product/5", {"Title": "Default Title"}, 4500, True),
 }
-_NO_SHIPPING = {"gid://shopify/ProductVariant/401"}  # an e-voucher
+_NO_SHIPPING = {"gid://shopify/ProductVariant/401", "gid://shopify/ProductVariant/501"}  # e-vouchers
 # Listed as available in search, but the cart refuses it (tracked inventory at 0), as seen live.
 _SOLD_OUT_AT_CART = {"gid://shopify/ProductVariant/301"}
 _PRODUCTS = {
@@ -46,6 +47,12 @@ _PRODUCTS = {
     "gid://shopify/Product/4": {
         "title": "Canyon Day Tour",
         "description": {"html": "Guided day hike. Instant e-voucher."},
+        "options": {"Title": ["Default Title"]},
+    },
+    # Titled by city, not country, like the live store's travel products.
+    "gid://shopify/Product/5": {
+        "title": "Kuala Lumpur City Tour",
+        "description": {"html": "Half-day guided city tour with lunch. Instant e-voucher."},
         "options": {"Title": ["Default Title"]},
     },
 }

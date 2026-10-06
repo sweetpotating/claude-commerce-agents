@@ -504,6 +504,31 @@
     return box;
   }
 
+  // Side by side, every fact the store's data states for these products (facts.py): data,
+  // validity, nights, duration, inclusions, group size, terms, price per day. A fact only
+  // one product states still gets a row, with "—" for the others, so gaps are visible.
+  const HIDDEN_FACTS = new Set(["product_url", "image_urls"]);
+  function factsTable(products) {
+    if (products.length < 2) return null;
+    const labels = [...new Set(products.flatMap((pr) => Object.keys(pr.attributes || {})))].filter((k) => !HIDDEN_FACTS.has(k));
+    if (!labels.length) return null;
+    const wrap = el("div", "matrix-wrap");
+    const table = el("table", "matrix");
+    const head = el("tr"); head.appendChild(el("th"));
+    products.forEach((pr) => head.appendChild(el("th", null, pr.title)));
+    const thead = el("thead"); thead.appendChild(head); table.appendChild(thead);
+    const tbody = el("tbody");
+    const addRow = (label, cells) => {
+      const tr = el("tr"); tr.appendChild(el("th", null, label));
+      cells.forEach((c) => tr.appendChild(el("td", null, c)));
+      tbody.appendChild(tr);
+    };
+    addRow("Price", products.map((pr) => (pr.price != null ? money(pr.price, pr.currency) : "—")));
+    labels.forEach((k) => addRow(k, products.map((pr) => String((pr.attributes || {})[k] ?? "—"))));
+    table.appendChild(tbody); wrap.appendChild(table);
+    return wrap;
+  }
+
   function comparisonCard(p) {
     const wrap = el("div");
     if (p.title) wrap.appendChild(el("div", "card-title", p.title));
@@ -527,6 +552,8 @@
       row.appendChild(card);
     });
     wrap.appendChild(row);
+    const facts = factsTable((p.entries || []).map((e) => e.product).filter(Boolean));
+    if (facts) wrap.appendChild(facts);
     const d = p.price_delta;
     if (d && d.amount) wrap.appendChild(el("p", "note", `Price difference: ${money(d.amount, (p.entries[0] && p.entries[0].product && p.entries[0].product.currency) || undefined)}`));
     return wrap;

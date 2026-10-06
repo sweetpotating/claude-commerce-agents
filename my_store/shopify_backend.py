@@ -58,6 +58,9 @@ from shopping_agent import (
     UserPreferences,
 )
 
+from .facts import extract
+from .places import PLACE_NAMES, expansions
+
 # Shopify's hosted example profile declares catalog, cart, checkout and order capabilities.
 # Fine for development; host your own before going live (shopify.dev/docs/agents/profiles).
 EXAMPLE_PROFILE = "https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json"
@@ -409,11 +412,20 @@ class ShopifyUCPBackend(StorefrontBackend):
             in_stock=bool(available) if variants else True,
             short_description=(_text(raw.get("description")) or "")[:300] or None,
             options=options,
-            attributes={"product_url": self._product_url(raw)},
+            attributes={"product_url": self._product_url(raw), **self._facts(raw, low)},
         )
         if not options and len(variants) == 1:
             self._default_variant[product.product_id] = variants[0]["id"]
         return product
+
+    @staticmethod
+    def _facts(raw: dict[str, Any], low: Any) -> dict[str, str]:
+        """Comparable facts from the title and description (facts.py), for comparisons."""
+        variants = raw.get("variants") or []
+        ships = (variants[0].get("requires") or {}).get("shipping") if variants else None
+        currency = low.get("currency", "") if isinstance(low, dict) else ""
+        price = _money(low) if low else None
+        return extract(raw.get("title", ""), _text(raw.get("description")), price, currency, ships)
 
     def _product_url(self, raw: dict[str, Any]) -> str:
         """Where a shopper opens the product on the storefront: the catalog's own link when
@@ -454,6 +466,19 @@ class ShopifyUCPBackend(StorefrontBackend):
         filters = filters or SearchFilters()
         await self._load_store()
         products = await self._search(query, filters, limit)
+        extra = expansions(query)
+        if extra:
+            # Travel products are titled by city ("Kuala Lumpur City Tour"), not country.
+            found = await asyncio.gather(*(self._search(q, filters, limit) for q in extra))
+            seen = {p.product_id for p in products}
+            for q, batch in zip(extra, found, strict=True):
+                place = next(x for x in PLACE_NAMES if x in q)
+                for p in batch:
+                    named = place in f"{p.title} {p.short_description or ''}".lower()
+                    if named and p.product_id not in seen:  # Shopify's fuzzy matches dropped
+                        seen.add(p.product_id)
+                        products.append(p)
+            products = products[: max(limit, 12)]
         if not products and _RANKING_WORDS.search(query):
             # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales
             # or rating data, so drop the ranking words and fall back to relevance.

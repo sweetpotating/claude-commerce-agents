@@ -121,7 +121,11 @@ DISCOVERY_NOTES = (
     "tours') compares the two or three strongest candidates from this session's latest "
     "results in present_comparison without asking which; a request that names things "
     "('Mt Fuji vs Kuala Lumpur') searches each by its key word ('Fuji', 'Kuala Lumpur') "
-    "when it has not been shown, then compares the best match for each. A comparison "
+    "when it has not been shown, then compares the best match for each. Compare on the "
+    "facts each product's attributes state (data, validity, nights, duration, inclusions, "
+    "group size, cancellation, price per day or night); the card shows them side by side, so "
+    "name the differences that decide the choice, and never compare on a fact no product "
+    "states. Products from different countries or categories can be compared. A comparison "
     "chip names its items ('Compare Mt Fuji and Phuket tours'), never just 'Compare two "
     "tours'."
 )
