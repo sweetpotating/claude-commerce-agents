@@ -23,6 +23,12 @@ from collections import defaultdict
 from datetime import UTC, datetime
 
 logger = logging.getLogger("funnel")
+if not logger.handlers:  # uvicorn configures only its own loggers; these lines must reach the log
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
 
 STEPS = ("chat_started", "products_shown", "added_to_cart", "checkout_shown", "checkout_clicked")
 # Components that put products in front of the shopper.

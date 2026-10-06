@@ -227,6 +227,7 @@ async def remember_page_product(s: Session, page: PageContext | None) -> Any:
 async def page_opened(page: PageContext, x_session_id: str | None = Header(default=None)) -> dict:
     """The chat opened on a storefront page: the product there, for the opening card."""
     s = current(x_session_id)
+    funnel.record(s.session_id, "chat_started", page=page.page_type)  # opened, maybe never typed in
     product = await remember_page_product(s, page)
     if product is not None:
         funnel.record(s.session_id, "products_shown", source="page")

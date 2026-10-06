@@ -41,7 +41,8 @@ def test_card_adds_and_checkout_clicks_reach_the_funnel(monkeypatch):
     client.post("/api/event", json={"session_id": "nope", "name": "checkout_clicked"})
 
     chats = client.get("/api/metrics", headers={"x-metrics-token": "s3cret"}).json()["chats"]
-    assert chats["products_shown"] == chats["added_to_cart"] == chats["checkout_shown"] == 1
+    assert chats["chat_started"] == chats["products_shown"] == chats["added_to_cart"] == 1
+    assert chats["checkout_shown"] == 1
     assert chats["checkout_clicked"] == 1 and f.events["added_to_cart"] == 1
     assert client.get("/api/metrics?token=wrong").status_code == 404
 
