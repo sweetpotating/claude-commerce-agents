@@ -1,0 +1,72 @@
+
+=== 0 provenance gate: add_to_cart({"product_id": "TS-200"})
+--- status: BLOCKED by provenance
+product_id TS-200 was not returned by catalog or order tools in this session. Resolve it first: call get_product_details with this exact id (text search does not match product ids), or find it via search or order history, then add it using a product_id from those results.
+
+=== 1 discovery: search_products({"query": "two person backpacking tent", "filters": {"max_price": 250}})
+--- status: ok
+Search returned 1 result(s): the catalog's closest text matches, which can include related items rather than the exact thing searched for. Treat a result as the requested item only if its title and attributes match; if none do, the item was not found, and anything you offer instead is named as a stand-in.
+<storefront_data>
+{"query": "two person backpacking tent", "result_count": 1, "results": [{"product_id": "TS-200", "title": "Summit 2P Backpacking Tent", "brand": "Trailhead", "price": 229.0, "currency": "USD", "rating": 4.7, "review_count": 88, "in_stock": true, "attributes": {"capacity": "2", "season_rating": "3-season"}, "short_description": "Freestanding two-person tent, 1.4 kg trail weight."}]}
+</storefront_data>
+
+=== 1b discovery: search_products({"query": "merino tee"})
+--- status: ok
+Search returned 1 result(s): the catalog's closest text matches, which can include related items rather than the exact thing searched for. Treat a result as the requested item only if its title and attributes match; if none do, the item was not found, and anything you offer instead is named as a stand-in.
+<storefront_data>
+{"query": "merino tee", "result_count": 1, "results": [{"product_id": "TS-100", "title": "Ridgeline Merino Tee", "brand": "Trailhead", "price": 48.0, "currency": "USD", "rating": 4.6, "review_count": 212, "in_stock": true, "attributes": {"material": "merino wool"}, "options": {"size": ["S", "M", "L"]}, "short_description": "Lightweight merino tee for hiking and travel."}]}
+</storefront_data>
+
+=== 1c render: present_products({"picks": [{"product_id": "TS-200", "reason": "Two-person and under $250"}]})
+--- status: ok
+Displayed to the customer.
+--- host event [ui]: {"component": "products", "payload": {"layout": "carousel", "items": [{"product": {"product_id": "TS-200", "title": "Summit 2P Backpacking Tent", "brand": "Trailhead", "price": 229.0, "currency": "USD", "rating": 4.7, "review_count": 88, "category": "camping", "labels": [], "attributes": {"capacity": "2", "season_rating": "3-season"}, "in_stock": true, "short_description": "Freestanding two-person tent, 1.4 kg trail weight.", "options": {}, "option_values": {}}, "reason": "Two-person and under $250"}]}}
+
+=== 2 options gate: add_to_cart({"product_id": "TS-100"})
+--- status: BLOCKED by options
+product_id TS-100 has options still to choose (size), so the cart takes one of its variants. Settle each option from what the customer said or the customer's profile, ask once with the values as chips when one is still open, then add the matching variant's product_id from the variants get_product_details returns for this id.
+
+=== 2b details: get_product_details({"product_id": "TS-100"})
+--- status: ok
+<storefront_data>
+{"product_id": "TS-100", "title": "Ridgeline Merino Tee", "brand": "Trailhead", "price": 48.0, "currency": "USD", "rating": 4.6, "review_count": 212, "in_stock": true, "attributes": {"material": "merino wool"}, "options": {"size": ["S", "M", "L"]}, "short_description": "Lightweight merino tee for hiking and travel.", "long_description": "150gsm merino jersey; odor resistant; machine washable cold.", "specs": {"weight": "150 gsm", "fit": "regular"}, "review_highlights": ["Doesn't smell after multi-day trips", "Runs slightly small"], "variants": [{"product_id": "TS-101", "option_values": {"size": "S"}, "price": 48.0, "in_stock": true}, {"product_id": "TS-102", "option_values": {"size": "M"}, "price": 48.0, "in_stock": false}, {"product_id": "TS-103", "option_values": {"size": "L"}, "price": 52.0, "in_stock": true}]}
+</storefront_data>
+
+=== 3 out of stock: add_to_cart({"product_id": "TS-102"})
+--- status: ERROR
+Nothing was added: TS-102 is out of stock; in stock: TS-101, TS-103. Tell the customer, offer what the message names as available, and add that only once they choose it.
+
+=== 3b add variant: add_to_cart({"product_id": "TS-103"})
+--- status: ok
+Added TS-103 x1. Cart now has 1 item(s), subtotal 52.00 USD.
+--- host event [cart_update]: {"cart": {"items": [{"product_id": "TS-103", "title": "Ridgeline Merino Tee", "price": 52.0, "quantity": 1, "image_url": null, "option_values": {"size": "L"}, "variant_of": "TS-100", "line_total": 52.0}], "item_count": 1, "subtotal": 52.0, "currency": "USD"}}
+
+=== 3c add tent: add_to_cart({"product_id": "TS-200"})
+--- status: ok
+Added TS-200 x1. Cart now has 2 item(s), subtotal 281.00 USD.
+--- host event [cart_update]: {"cart": {"items": [{"product_id": "TS-103", "title": "Ridgeline Merino Tee", "price": 52.0, "quantity": 1, "image_url": null, "option_values": {"size": "L"}, "variant_of": "TS-100", "line_total": 52.0}, {"product_id": "TS-200", "title": "Summit 2P Backpacking Tent", "price": 229.0, "quantity": 1, "image_url": null, "line_total": 229.0}], "item_count": 2, "subtotal": 281.0, "currency": "USD"}}
+
+=== 4 fulfillment: get_fulfillment_options({"product_ids": ["TS-200", "TS-103"]})
+--- status: ok
+<storefront_data>
+[{"method": "shipping", "eta": "3-5 business days", "fee": 0.0}, {"method": "delivery", "eta": "1-2 business days", "fee": 15.0}]
+</storefront_data>
+
+=== 4b policy: search_policies({"query": "returns"})
+--- status: ok
+<storefront_data>
+[{"policy_id": "POL-RET", "title": "Returns", "category": "returns", "content": "Unused items can be returned within 30 days of delivery for a full refund. Used camping gear can be returned within 30 days for store credit."}]
+</storefront_data>
+
+=== 5 checkout: checkout({"fulfillment_method": "shipping"})
+--- status: ok
+Displayed to the customer.
+--- host event [ui]: {"component": "checkout", "payload": {"fulfillment_method": "shipping", "cart": {"items": [{"product_id": "TS-103", "title": "Ridgeline Merino Tee", "price": 52.0, "quantity": 1, "image_url": null, "option_values": {"size": "L"}, "variant_of": "TS-100", "line_total": 52.0}, {"product_id": "TS-200", "title": "Summit 2P Backpacking Tent", "price": 229.0, "quantity": 1, "image_url": null, "line_total": 229.0}], "item_count": 2, "subtotal": 281.0, "currency": "USD"}, "handoffs": [{"url": "https://checkout.example.com/c/<token>", "label": "Pay securely"}]}}
+
+=== 6 payment webhook: order ORD-XXXXXX total $281.0
+
+=== 6b post-purchase: get_order_status({"order_id": "ORD-XXXXXX"})
+--- status: ok
+<storefront_data>
+{"order_id": "ORD-XXXXXX", "status": "processing", "placed_at": "<now>", "items": [{"product_id": "TS-103", "title": "Ridgeline Merino Tee", "quantity": 1, "price": 52.0}, {"product_id": "TS-200", "title": "Summit 2P Backpacking Tent", "quantity": 1, "price": 229.0}], "total": 281.0, "currency": "USD"}
+</storefront_data>

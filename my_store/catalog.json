@@ -1,0 +1,99 @@
+{
+  "products": [
+    {
+      "product_id": "TS-100",
+      "title": "Ridgeline Merino Tee",
+      "brand": "Trailhead",
+      "price": 48.0,
+      "rating": 4.6,
+      "review_count": 212,
+      "category": "apparel",
+      "attributes": {"material": "merino wool"},
+      "short_description": "Lightweight merino tee for hiking and travel.",
+      "long_description": "150gsm merino jersey; odor resistant; machine washable cold.",
+      "specs": {"weight": "150 gsm", "fit": "regular"},
+      "review_highlights": ["Doesn't smell after multi-day trips", "Runs slightly small"],
+      "options": {"size": ["S", "M", "L"]},
+      "variants": [
+        {"product_id": "TS-101", "option_values": {"size": "S"}, "price": 48.0, "stock": 6},
+        {"product_id": "TS-102", "option_values": {"size": "M"}, "price": 48.0, "stock": 0},
+        {"product_id": "TS-103", "option_values": {"size": "L"}, "price": 52.0, "stock": 3}
+      ]
+    },
+    {
+      "product_id": "TS-200",
+      "title": "Summit 2P Backpacking Tent",
+      "brand": "Trailhead",
+      "price": 229.0,
+      "rating": 4.7,
+      "review_count": 88,
+      "category": "camping",
+      "attributes": {"capacity": "2", "season_rating": "3-season"},
+      "short_description": "Freestanding two-person tent, 1.4 kg trail weight.",
+      "long_description": "Two doors, two vestibules, color-coded clips; packs to 45 x 15 cm.",
+      "specs": {"trail weight": "1.4 kg", "floor area": "2.7 m2"},
+      "review_highlights": ["Pitches in five minutes", "Tight for two tall people"],
+      "stock": 12
+    },
+    {
+      "product_id": "TS-300",
+      "title": "Basecamp 4P Family Tent",
+      "brand": "Trailhead",
+      "price": 319.0,
+      "rating": 4.4,
+      "review_count": 41,
+      "category": "camping",
+      "attributes": {"capacity": "4", "season_rating": "3-season"},
+      "short_description": "Roomy car-camping tent with standing headroom.",
+      "stock": 4
+    },
+    {
+      "product_id": "TS-400",
+      "title": "Featherlite Sleeping Pad",
+      "brand": "Trailhead",
+      "price": 89.0,
+      "rating": 4.5,
+      "review_count": 130,
+      "category": "camping",
+      "attributes": {"r_value": "4.2"},
+      "short_description": "Insulated inflatable pad, R-value 4.2.",
+      "stock": 20
+    }
+  ],
+  "policies": [
+    {
+      "policy_id": "POL-RET",
+      "title": "Returns",
+      "category": "returns",
+      "content": "Unused items can be returned within 30 days of delivery for a full refund. Used camping gear can be returned within 30 days for store credit."
+    },
+    {
+      "policy_id": "POL-SHIP",
+      "title": "Shipping",
+      "category": "shipping",
+      "content": "Standard shipping is free over $100 and arrives in 3-5 business days. Express is $15 and arrives in 1-2 business days."
+    }
+  ],
+  "orders": {
+    "demo-user": [
+      {
+        "order_id": "ORD-5001",
+        "status": "shipped",
+        "placed_at": "2026-09-28T10:00:00",
+        "items": [{"product_id": "TS-400", "title": "Featherlite Sleeping Pad", "quantity": 1, "price": 89.0}],
+        "total": 89.0,
+        "estimated_delivery": "2026-10-08",
+        "tracking_url": "https://tracking.example.com/ORD-5001"
+      }
+    ]
+  },
+  "users": {
+    "demo-user": {
+      "user_id": "demo-user",
+      "display_name": "Sam",
+      "loyalty_tier": "member",
+      "default_location": "Portland, OR",
+      "preferences": {"budget_style": "mid-range"}
+    }
+  }
+}
