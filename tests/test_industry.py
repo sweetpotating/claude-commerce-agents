@@ -136,3 +136,25 @@ def test_the_agent_recommends_before_asking():
     assert "Never send a plan without products" in text
     notes = shopify_agent_config(**industry_config_overrides()).domain_search_notes
     assert "do not ask a question before showing options" in notes
+
+
+def test_comparisons_run_without_asking_which():
+    notes = shopify_agent_config(**industry_config_overrides()).domain_search_notes
+    assert "without asking which" in notes and "searches each by its key word" in notes
+
+
+async def test_chat_stream_sends_keepalives_while_a_turn_is_quiet(monkeypatch):
+    import asyncio
+
+    from my_store import app as host
+
+    monkeypatch.setattr(host, "KEEPALIVE_SECONDS", 0.01)
+
+    async def slow_turn():
+        yield "event: text_delta\ndata: {}\n\n"
+        await asyncio.sleep(0.05)  # a long tool call
+        yield "event: turn_complete\ndata: {}\n\n"
+
+    out = [chunk async for chunk in host.with_keepalive(slow_turn())]
+    assert out[0].startswith("event: text_delta") and out[-1].startswith("event: turn_complete")
+    assert ": keep-alive\n\n" in out[1:-1]

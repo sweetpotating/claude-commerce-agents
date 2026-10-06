@@ -596,7 +596,17 @@
         }
       }
     } catch (e) {
-      add(el("div", "error", e.message || String(e)));
+      if (e instanceof TypeError) {
+        // The connection dropped mid-reply (the browser's own wording means nothing to a
+        // shopper): say so plainly and offer the same message again.
+        const box = el("div", "error", "The connection dropped before the reply finished. ");
+        const again = el("button", "chip", "Try again"); again.type = "button";
+        again.onclick = () => { box.remove(); ask(text); };
+        box.appendChild(again);
+        add(box);
+      } else {
+        add(el("div", "error", e.message || "Something went wrong. Please try again."));
+      }
     } finally {
       status.remove();
       busy = false; send.disabled = false; input.focus(); scrollDown();

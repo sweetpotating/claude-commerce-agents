@@ -105,7 +105,14 @@ DISCOVERY_NOTES = (
     "destination, country, or category no result showed). Write any budget or price in a "
     "chip in the catalog's currency, as the results show it. Product "
     "cards have their own Choose options, Add to cart, and Checkout buttons, so the "
-    "shopper can buy straight from a card; you do not need to ask before they tap."
+    "shopper can buy straight from a card; you do not need to ask before they tap. "
+    "Comparisons run at once: a request to compare that names nothing ('compare two "
+    "tours') compares the two or three strongest candidates from this session's latest "
+    "results in present_comparison without asking which; a request that names things "
+    "('Mt Fuji vs Kuala Lumpur') searches each by its key word ('Fuji', 'Kuala Lumpur') "
+    "when it has not been shown, then compares the best match for each. A comparison "
+    "chip names its items ('Compare Mt Fuji and Phuket tours'), never just 'Compare two "
+    "tours'."
 )
 
 BRAND_VOICE = (

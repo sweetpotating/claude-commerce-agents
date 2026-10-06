@@ -17,9 +17,12 @@ restart, and signature checks on the payment webhook
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 import secrets
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -43,6 +46,8 @@ from . import guards
 from .backend import MyStoreBackend
 from .industry import industry_config_overrides, industry_extensions
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
+
+logger = logging.getLogger(__name__)
 
 # Claude Code cloud environments reserve ANTHROPIC_API_KEY for their own sign-in and drop a
 # value set there, so the agent's key can come in under this name instead.
@@ -173,17 +178,57 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         s.messages.append({"role": "user", "content": body.message})
     ctx = context(s, body.page)
 
-    async def stream():
+    async def turn():
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
                 yield to_sse(event)
         except Exception:
+            logger.exception("chat turn failed")
             yield to_sse(AgentEvent.error("Something went wrong. Please try again."))
             return
         await agent.update_memory(s.messages, ctx)
 
-    return StreamingResponse(stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        with_keepalive(turn()),
+        media_type="text/event-stream",
+        # No proxy buffering or caching: each event reaches the phone as it happens.
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+KEEPALIVE_SECONDS = 10
+
+
+async def with_keepalive(events: AsyncIterator[str]) -> AsyncIterator[str]:
+    """Pass the turn's events through, plus an SSE comment line whenever none has gone out
+    for KEEPALIVE_SECONDS. A turn that spends a while in tool calls (a comparison looking up
+    several products) otherwise sends nothing, and a proxy or a phone's browser can drop the
+    idle stream mid-turn."""
+    queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+    async def pump() -> None:
+        try:
+            async for item in events:
+                await queue.put(item)
+        finally:
+            await queue.put(None)
+
+    task = asyncio.create_task(pump())
+    try:
+        while True:
+            try:
+                item = await asyncio.wait_for(queue.get(), KEEPALIVE_SECONDS)
+            except TimeoutError:
+                yield ": keep-alive\n\n"
+                continue
+            if item is None:
+                break
+            yield item
+    finally:
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
 
 
 @app.get("/api/history")
