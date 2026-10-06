@@ -108,6 +108,13 @@ def clean(
     return out[:limit]
 
 
+def in_currency(chip: str, currency: str) -> str:
+    """'Gifts under $50' -> 'Gifts under SGD 50' in a store that sells in SGD (watch item)."""
+    if not currency or currency == "USD":
+        return chip
+    return re.sub(r"(?:US)?\$\s?(\d)", rf"{currency} \1", chip)
+
+
 def outage_chips(cart_titles: list[str]) -> list[str]:
     """What still works while search is down: the cart and its checkout."""
     return ["Check out", "View my cart"] if cart_titles else []

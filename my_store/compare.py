@@ -229,6 +229,17 @@ async def enrich(payload: Payload, context: EnrichmentContext) -> dict[str, Any]
             "present_comparison again with the product_ids those results return.",
             PROVENANCE_GATE,
         )
+    page = _turn_this.get(id(context.state))
+    if (
+        page
+        and page[0] not in {e.product_id for e in entries}
+        and not any(context.state.seen_products[e.product_id].variant_of == page[0] for e in entries)
+    ):
+        raise PresentationRefused(
+            f"The shopper said 'this' on the page for {page[1]} ({page[0]}): compare that "
+            "product, not one from earlier in the chat. Call present_comparison again with it.",
+            PROVENANCE_GATE,
+        )
     if len(entries) < 2:
         raise PresentationRefused("A comparison needs 2-4 different products.", PROVENANCE_GATE)
     products = [context.state.seen_products[e.product_id] for e in entries]
@@ -312,6 +323,16 @@ _FILLER = set(
 )
 
 _turn_wants_comparison: dict[int, bool] = {}
+# The product page the shopper is on, per chat, when their words say "this" (item 16).
+_turn_this: dict[int, tuple[str, str]] = {}
+_THIS = re.compile(r"\b(this|this one|it)\b", re.IGNORECASE)
+
+
+def note_viewing(state: ShoppingSessionState, text: str, viewing: Product | None) -> None:
+    if viewing is not None and _THIS.search(text):
+        _turn_this[id(state)] = (viewing.product_id, viewing.title)
+    else:
+        _turn_this.pop(id(state), None)
 
 
 def wants_comparison(text: str) -> bool:

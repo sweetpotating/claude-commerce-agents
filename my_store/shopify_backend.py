@@ -658,6 +658,10 @@ class ShopifyUCPBackend(StorefrontBackend):
             logger.warning("search %r answered from the catalog index (%s)", query, error)
             return fallback
         self._ok()
+        if not products and len(_query_words(query)) > 1:
+            # A long query ("Tokyo temple walking tour") matches nothing in a store whose
+            # search needs every word; the index ranks by the words it does match.
+            products = self._filtered(self._index_match(query), filters)[:limit]
         self._merge_into_index(products)
         products = await self._expand(query, filters, limit, products)
         if not products and _RANKING_WORDS.search(query):
@@ -1110,7 +1114,16 @@ class ShopifyUCPBackend(StorefrontBackend):
         }
 
     async def get_cart(self, session: ShoppingSessionContext) -> Cart:
-        raw = await self._raw_cart(session)
+        """The cart. If Shopify can't be read just now, the cart as this server last wrote
+        it (item 49: the bot said "I can't refresh the cart" and answered from memory)."""
+        try:
+            raw = await self._raw_cart(session)
+        except (ShopifyError, httpx.HTTPError) as error:
+            last = self._written.get(session.session_id)
+            if last is None:
+                raise ShopifyError(f"the cart could not be read just now ({type(error).__name__})") from error
+            logger.warning("get_cart failed (%s); answering with the cart last written", error)
+            raw = copy.deepcopy(last[1])
         await self._load_store()
         return self._cart(session, raw) if raw else Cart(currency=self._currency)
 

@@ -143,7 +143,8 @@ CATALOG_NOTES = (
     "them and ask which before adding. Chips offer only what this chat can do: search, "
     "compare, add, remove, change a quantity, check out; never 'notify me', 'back in stock "
     "alert', 'wishlist', or 'track price'. A chip that names a product names one a tool "
-    "returned in this session."
+    "returned in this session. Never describe the store or its catalog as a demo, test, "
+    "sample, or 'demo side'; it is the store."
 )
 
 # Where a shopper reaches a person. The store's contact FAQ gives the same address.

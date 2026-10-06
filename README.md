@@ -183,6 +183,24 @@ executor. It has not been run against a live store yet: do that first (below).
 5. Add `SHOPIFY_CLIENT_ID`/`SECRET` from Dev Dashboard → Catalogs → API key and re-test
    checkout (now through `create_checkout`).
 
+## 4a. Cost and daily limits
+
+The deployed chat runs on Claude Haiku 4.5 ($1 per million input tokens, $5 per million
+output). Set `STORE_AGENT_MODEL=claude-sonnet-5` for the stronger model at twice the price.
+Two daily caps keep the bill bounded. Both reset at midnight UTC and on a restart. Change
+them in Render > Environment:
+
+| Setting | Default | What it caps |
+| --- | --- | --- |
+| `TURNS_PER_DAY` | 1500 | Messages across all shoppers per day. A chat is usually 3-6 messages, so this is roughly 250-500 chats a day. |
+| `TOKENS_PER_DAY` | 10000000 | Model tokens per day, weighted to input cost (output counts 5x). That is about US$10 a day on Haiku 4.5, or US$20 on Sonnet 5. |
+| `TURNS_PER_IP_PER_DAY` | 150 | Messages from one IP, so one visitor can't use up the day |
+
+When either daily cap is reached, new messages get "The assistant is resting for today".
+Cards already shown, the cart and checkout keep working. As the ceiling that survives restarts,
+set a monthly spend limit on the API key's workspace in the Anthropic Console. All the
+limits are listed in `DEPLOY.md`.
+
 ## 5. Files in this repo
 
 | Path | What |

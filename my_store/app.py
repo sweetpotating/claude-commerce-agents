@@ -213,10 +213,27 @@ async def widget_config() -> JSONResponse:
 async def healthz() -> dict:
     """Up, which commit is deployed (Render sets RENDER_GIT_COMMIT), and the store's health:
     recent failed catalog calls and the last error, so an outage is visible from outside."""
-    out: dict[str, Any] = {"ok": True, "commit": (os.environ.get("RENDER_GIT_COMMIT") or "")[:7] or None}
+    out: dict[str, Any] = {"ok": True, "commit": COMMIT}
     if isinstance(backend, ShopifyUCPBackend):
         out["store"] = backend.health()
     return out
+
+
+def _commit() -> str | None:
+    """The deployed commit: Render's RENDER_GIT_COMMIT, else the checkout's own HEAD."""
+    if sha := os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT"):
+        return sha[:7]
+    head = Path(__file__).resolve().parent.parent / ".git" / "HEAD"
+    try:
+        ref = head.read_text().strip()
+        if ref.startswith("ref: "):
+            return (head.parent / ref[5:]).read_text().strip()[:7]
+        return ref[:7]
+    except OSError:
+        return None
+
+
+COMMIT = _commit()
 
 
 # Load tests and eval crawls come from one IP and would trip the per-IP limits meant for
@@ -373,6 +390,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     if sells := store_sells(s, examples=bool(discovery.OVERVIEW.search(body.message))):
         ctx.page.extra["store_sells"] = sells
     note_turn(s.state, body.message)
+    compare.note_viewing(s.state, body.message, viewing)
     await note_cart(s, ctx)
     degraded = isinstance(backend, ShopifyUCPBackend) and backend.degraded()
     chip = body.source == "chip"
@@ -512,7 +530,8 @@ def clean_chips(s: Session, chips: list[str], degraded: bool, after_error: bool 
     )
     if degraded and not kept:
         kept = chip_rules.outage_chips(s.cart_titles)
-    return kept
+    currency = getattr(backend, "_currency", "")
+    return [chip_rules.in_currency(c, currency) for c in kept]
 
 
 async def note_cart(s: Session, ctx: Any) -> None:
