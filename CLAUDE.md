@@ -13,6 +13,8 @@ merchant agents). The owner is connecting the shopping agent to their own Shopif
   `tests/fake_shopify.py`, **not yet against a live store**.
 - `DEPLOY.md`, `render.yaml`, `my_store/guards.py`, `my_store/static/widget.js`: Render deploy,
   public-launch limits, and the storefront chat bubble.
+- `my_store/industry.py`: the travel, telecom, and ticketing verticals' additions on Shopify
+  (itinerary card, plan table, policy terms); `chat.html` renders every component.
 - `my_store/app.py`: FastAPI host; `STORE_BACKEND=shopify` selects the Shopify backend. `GET /`
   serves `my_store/static/chat.html`, a browser chat over the API.
 

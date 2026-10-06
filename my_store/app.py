@@ -41,6 +41,7 @@ from shopping_agent_runtime import ShoppingAgent
 
 from . import guards
 from .backend import MyStoreBackend
+from .industry import industry_config_overrides, industry_extensions
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
 
 # Claude Code cloud environments reserve ANTHROPIC_API_KEY for their own sign-in and drop a
@@ -54,7 +55,7 @@ SKILLS_DIR = Path(__file__).resolve().parents[1] / "vendor/commerce-agents/shopp
 # otherwise the sample catalog.json store.
 if os.environ.get("STORE_BACKEND") == "shopify":
     backend: MyStoreBackend | ShopifyUCPBackend = ShopifyUCPBackend.from_env()
-    config = shopify_agent_config()
+    config = shopify_agent_config(**industry_config_overrides())
 else:
     backend = MyStoreBackend()
     config = ShoppingAgentConfig(
@@ -68,6 +69,8 @@ agent = ShoppingAgent(
     skills_dir=SKILLS_DIR,
     config=config,
     memory_store=InMemoryMemoryStore(),  # swap for a durable MemoryStore
+    # Travel itineraries and plan tables from the reference verticals (industry.py).
+    extra_presentation_tools=industry_extensions(),
 )
 
 

@@ -79,6 +79,7 @@
   .steps > li { counter-increment: step; }
   .steps .label { font-weight: 600; }
   .steps .label::before { content: counter(step) ". "; color: var(--muted); }
+  .steps.days .label::before { content: none; }
   .steps .detail, .section p { color: var(--muted); font-size: 14px; margin: 4px 0 8px; }
   .section + .section { margin-top: 12px; }
   .section h3 { font-size: 15px; margin: 0; }
@@ -89,6 +90,13 @@
   .pc { margin: 0; padding-left: 18px; font-size: 13px; }
   .pc.pro li::marker { content: "+  "; }
   .pc.con li::marker { content: "−  "; }
+  .matrix-wrap { overflow-x: auto; }
+  table.matrix { border-collapse: collapse; width: 100%; font-size: 14px; }
+  table.matrix th, table.matrix td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.matrix thead th { font-weight: 600; }
+  table.matrix tbody th { color: var(--muted); font-weight: 400; white-space: nowrap; }
+  table.matrix .pick { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  table.matrix button { border: 0; border-radius: 8px; padding: 6px 10px; background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 13px; cursor: pointer; }
   .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
   .kv dt { color: var(--muted); }
   .kv dd { margin: 0; }
@@ -332,6 +340,58 @@
     return box;
   }
 
+  // A trip, outing, or event weekend, day by day, with products on each day.
+  function itineraryCard(p) {
+    const box = el("div", "panel");
+    if (p.title) box.appendChild(el("div", "card-title", p.title));
+    if (p.travel_dates) box.appendChild(el("p", "intro", p.travel_dates));
+    const ol = el("ol", "steps days"); // day labels carry their own numbers
+    (p.days || []).forEach((d) => {
+      const li = el("li");
+      li.appendChild(el("div", "label", d.label));
+      if (d.note) li.appendChild(el("div", "detail", d.note));
+      if (d.products && d.products.length) li.appendChild(productRow(d.products));
+      ol.appendChild(li);
+    });
+    box.appendChild(ol);
+    return box;
+  }
+
+  // Plans, packages, or ticket types side by side; every cell comes from the catalog.
+  function planMatrixCard(p) {
+    const plans = p.plans || [];
+    const best = Object.fromEntries((p.annotations || []).map((a) => [a.plan_id, a.best_for]));
+    const box = el("div", "panel");
+    if (p.title) box.appendChild(el("div", "card-title", p.title));
+    const wrap = el("div", "matrix-wrap");
+    const table = el("table", "matrix");
+    const pickCls = (pl) => (pl.product_id === p.recommended_plan_id ? "pick" : null);
+    const head = el("tr"); head.appendChild(el("th"));
+    plans.forEach((pl) => {
+      const th = el("th", pickCls(pl));
+      if (pl.product_id === p.recommended_plan_id) { th.appendChild(el("span", "badge", "Recommended")); th.appendChild(el("br")); }
+      th.appendChild(document.createTextNode(pl.title));
+      head.appendChild(th);
+    });
+    const thead = el("thead"); thead.appendChild(head); table.appendChild(thead);
+    const tbody = el("tbody");
+    const addRow = (label, cells) => {
+      const tr = el("tr"); tr.appendChild(el("th", null, label));
+      cells.forEach((c, i) => { const td = el("td", pickCls(plans[i])); typeof c === "string" ? (td.textContent = c) : td.appendChild(c); tr.appendChild(td); });
+      tbody.appendChild(tr);
+    };
+    (p.rows || []).forEach((r) => addRow(r.label, r.values || []));
+    if (Object.keys(best).length) addRow("Best for", plans.map((pl) => best[pl.product_id] || "—"));
+    addRow("", plans.map((pl) => {
+      const b = el("button", null, Object.keys(pl.options || {}).length ? "Choose" : "Add");
+      b.type = "button"; b.disabled = pl.in_stock === false;
+      b.onclick = () => ask(Object.keys(pl.options || {}).length ? `I'd like the ${pl.title}. What options are there?` : `Add the ${pl.title} to my cart.`);
+      return b;
+    }));
+    table.appendChild(tbody); wrap.appendChild(table); box.appendChild(wrap);
+    return box;
+  }
+
   // A facts box the store authors in full (e.g. a product disclosure).
   function disclosureCard(p) {
     const box = el("div", "panel");
@@ -382,6 +442,8 @@
       case "comparison": return add(comparisonCard(p));
       case "order_status": return add(orderCard(p));
       case "disclosure": return add(disclosureCard(p));
+      case "itinerary": return add(itineraryCard(p));
+      case "plan_matrix": return add(planMatrixCard(p));
       default: {
         // A component this page doesn't know yet: show its heading, never raw data.
         const box = el("div", "panel");

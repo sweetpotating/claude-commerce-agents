@@ -1,0 +1,298 @@
+"""What the reference repo's four verticals add to the shopping agent, made to work on any
+Shopify catalog, so one assistant serves products, trips and experiences, service plans,
+and event tickets alike.
+
+| Vertical (``vendor/commerce-agents/examples/``) | Brought over here |
+| --- | --- |
+| retail | the base agent: search, plans, comparisons, cart, checkout, policies |
+| travel | ``present_itinerary`` (day-by-day card), date and party-size search notes |
+| telecom | ``present_plan_comparison`` (side-by-side table), plan and fee policy terms |
+| entertainment | ticket, fee, transfer and resale policy terms; per-item quantity cap |
+
+Left out, because a Shopify store has no data behind them: the travel demo's room
+availability and night-count booking, the telecom demo's subscriber account (current plan,
+usage, upgrade eligibility), and the ticketing demo's seat map and seat holds. Those need a
+backend that knows rooms, lines, or seats.
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Any
+
+from commerce_common.presentation import EnrichmentContext, PresentationExtension
+from pydantic import BaseModel, Field
+from shopping_agent import ShoppingAgentConfig, ShoppingSessionState
+
+_DEFAULTS = ShoppingAgentConfig()
+
+# Policy vocabulary from the travel, telecom, and ticketing configs: a question using any
+# of these reads the store's policies before the agent answers.
+POLICY_TERMS: tuple[str, ...] = (
+    # travel and experiences
+    "booking",
+    "reschedule",
+    "rescheduled",
+    "no-show",
+    "deposit",
+    "free cancellation",
+    "change fee",
+    "weather",
+    # service plans (telecom)
+    "overage",
+    "roaming",
+    "data cap",
+    "early termination",
+    "activation fee",
+    "plan change",
+    "upgrade fee",
+    "trade-in",
+    "trade in",
+    "autopay",
+    "installment",
+    "price guarantee",
+    # tickets and events
+    "service fee",
+    "processing fee",
+    "all-in",
+    "face value",
+    "waitlist",
+    "transfer",
+    "transfers",
+    "resale",
+    "sold out",
+    "postponed",
+    "will-call",
+    "accessible seating",
+)
+
+SEARCH_NOTES = (
+    "The catalog can hold services, experiences, trips, tours, classes, plans, tickets, "
+    "and digital vouchers as well as physical goods; search before saying the store does "
+    "not carry something. Dates, times, sessions, party sizes, and plan tiers usually "
+    "appear as a product's options: when the customer names a date or a group size, match "
+    "it to an option value and say plainly when no option fits. Prices are what the "
+    "catalog says; state fees and what is included only from tool results."
+)
+
+BRAND_VOICE = (
+    "warm, candid, and practical: plain about trade-offs, upfront about fees and what is "
+    "left, and never in a hurry to sell"
+)
+
+
+def industry_config_overrides() -> dict[str, Any]:
+    """Settings layered over the Shopify config (``shopify_agent_config``)."""
+    return {
+        "brand_voice": BRAND_VOICE,
+        "domain_search_notes": os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES),
+        # Plan comparisons need every tier in one search (the telecom demo's setting).
+        "max_search_results": 25,
+        # The ticketing demo's cap: no one buys 40 of a ticket or a tour seat by mistake.
+        "max_quantity_per_item": 8,
+        "policy_intent_terms": _DEFAULTS.policy_intent_terms
+        + tuple(t for t in POLICY_TERMS if t not in _DEFAULTS.policy_intent_terms),
+    }
+
+
+def _seen(state: ShoppingSessionState, ids: list[str]) -> list[dict[str, Any]]:
+    return [
+        state.seen_products[pid].model_dump(exclude_none=True)
+        for pid in ids
+        if isinstance(pid, str) and pid in state.seen_products
+    ]
+
+
+# -- present_itinerary (travel) --------------------------------------------------------
+
+
+class ItineraryDay(BaseModel):
+    label: str = Field(max_length=80)
+    note: str | None = Field(default=None, max_length=280)
+    product_ids: list[str] = Field(default_factory=list, max_length=6)
+
+
+class ItineraryPayload(BaseModel):
+    title: str = Field(max_length=80)
+    days: list[ItineraryDay] = Field(min_length=1, max_length=10)
+    travel_dates: str | None = Field(default=None, max_length=60)
+
+
+_ITINERARY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "maxLength": 80},
+        "days": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "label": {"type": "string", "maxLength": 80, "description": "e.g. 'Day 1: Arrive'"},
+                    "note": {"type": "string", "maxLength": 280},
+                    "product_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
+                },
+                "required": ["label"],
+                "additionalProperties": False,
+            },
+        },
+        "travel_dates": {"type": "string", "maxLength": 60},
+    },
+    "required": ["title", "days"],
+    "additionalProperties": False,
+}
+
+
+def _itinerary_days(days: list[dict[str, Any]], state: ShoppingSessionState) -> list[dict[str, Any]]:
+    out = []
+    for day in days:
+        if not isinstance(day, dict) or not day.get("label"):
+            continue
+        entry: dict[str, Any] = {
+            "label": day["label"],
+            "products": _seen(state, day.get("product_ids") or []),
+        }
+        if day.get("note"):
+            entry["note"] = day["note"]
+        out.append(entry)
+    return out
+
+
+async def _enrich_itinerary(payload: ItineraryPayload, context: EnrichmentContext) -> dict[str, Any]:
+    enriched = payload.model_dump(exclude_none=True)
+    enriched["days"] = _itinerary_days(enriched["days"], context.state)
+    return enriched
+
+
+def _partial_itinerary(data: dict[str, Any], state: ShoppingSessionState) -> dict[str, Any] | None:
+    days = _itinerary_days(data.get("days") or [], state)
+    if not days:
+        return None
+    payload: dict[str, Any] = {"title": data.get("title") or "", "days": days}
+    if data.get("travel_dates"):
+        payload["travel_dates"] = data["travel_dates"]
+    return payload
+
+
+def build_itinerary_extension() -> PresentationExtension:
+    return PresentationExtension(
+        name="present_itinerary",
+        component="itinerary",
+        description=(
+            "Show a day-by-day itinerary for a trip, outing, or event weekend, with the "
+            "store's tours, experiences, tickets, and gear attached to each day (e.g. "
+            "'Day 1: Arrive'). Use when the customer is planning something that spans "
+            "days; pass product_ids from this session's results and the UI fills in "
+            "titles and prices. Know-how with no products attached goes in present_guide."
+        ),
+        input_schema=_ITINERARY_SCHEMA,
+        payload_model=ItineraryPayload,
+        enrich=_enrich_itinerary,
+        enrich_partial=_partial_itinerary,
+    )
+
+
+# -- present_plan_comparison (telecom) --------------------------------------------------
+
+
+class PlanAnnotation(BaseModel):
+    plan_id: str
+    best_for: str | None = Field(default=None, max_length=80)
+
+
+class PlanMatrixPayload(BaseModel):
+    title: str | None = Field(default=None, max_length=80)
+    plan_ids: list[str] = Field(min_length=2, max_length=4)
+    annotations: list[PlanAnnotation] = Field(default_factory=list, max_length=4)
+    recommended_plan_id: str | None = None
+
+
+_MATRIX_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "maxLength": 80},
+        "plan_ids": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 4},
+        "annotations": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "plan_id": {"type": "string"},
+                    "best_for": {"type": "string", "maxLength": 80},
+                },
+                "required": ["plan_id"],
+                "additionalProperties": False,
+            },
+        },
+        "recommended_plan_id": {"type": "string"},
+    },
+    "required": ["plan_ids"],
+    "additionalProperties": False,
+}
+
+
+def _cell(value: Any) -> str:
+    if value is None or value == "" or value == []:
+        return "—"
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    return str(value)
+
+
+async def _enrich_matrix(payload: PlanMatrixPayload, context: EnrichmentContext) -> dict[str, Any]:
+    plans = [context.state.seen_products[p] for p in payload.plan_ids if p in context.state.seen_products]
+    if len(plans) < 2:
+        raise ValueError(
+            "A plan comparison needs at least 2 product_ids from this session's results. "
+            "Search first and pick from the results."
+        )
+    # Every cell comes from the catalog record: price, seller, each option, any attribute.
+    rows: list[dict[str, Any]] = [
+        {"label": "Price", "values": [f"{p.price:g} {p.currency}" for p in plans]},
+    ]
+    if any(p.brand for p in plans):
+        rows.append({"label": "By", "values": [_cell(p.brand) for p in plans]})
+    for name in dict.fromkeys(k for p in plans for k in p.options):
+        rows.append({"label": name, "values": [_cell(p.options.get(name)) for p in plans]})
+    for key in dict.fromkeys(k for p in plans for k in p.attributes):
+        rows.append(
+            {
+                "label": key.replace("_", " ").capitalize(),
+                "values": [_cell(p.attributes.get(key)) for p in plans],
+            }
+        )
+    rows.append({"label": "Available", "values": ["Yes" if p.in_stock else "Sold out" for p in plans]})
+    kept = {p.product_id for p in plans}
+    enriched: dict[str, Any] = {
+        "plans": [p.model_dump(exclude_none=True) for p in plans],
+        "rows": rows,
+        "annotations": [a.model_dump(exclude_none=True) for a in payload.annotations if a.plan_id in kept],
+    }
+    if payload.title:
+        enriched["title"] = payload.title
+    if payload.recommended_plan_id in kept:
+        enriched["recommended_plan_id"] = payload.recommended_plan_id
+    return enriched
+
+
+def build_plan_matrix_extension() -> PresentationExtension:
+    return PresentationExtension(
+        name="present_plan_comparison",
+        component="plan_matrix",
+        description=(
+            "Show a side-by-side table of 2-4 plans, packages, passes, tiers, or ticket "
+            "types: price, options, and availability in rows. Use for 'which plan / package "
+            "should I pick' decisions; for physical products use present_comparison. Pass "
+            "product_ids from this session's results; the UI fills every cell from the "
+            "catalog. You may add a short 'best for' note per plan and recommend one."
+        ),
+        input_schema=_MATRIX_SCHEMA,
+        payload_model=PlanMatrixPayload,
+        enrich=_enrich_matrix,
+    )
+
+
+def industry_extensions() -> list[PresentationExtension]:
+    return [build_itinerary_extension(), build_plan_matrix_extension()]
