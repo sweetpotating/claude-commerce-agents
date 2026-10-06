@@ -74,7 +74,25 @@
   .total { display: flex; justify-content: space-between; border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; font-weight: 600; }
   .note { color: var(--muted); font-size: 14px; margin: 8px 0; }
   .handoffs { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-  pre.raw { font-size: 12px; overflow-x: auto; margin: 0; }
+  .intro { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; counter-reset: step; }
+  .steps > li { counter-increment: step; }
+  .steps .label { font-weight: 600; }
+  .steps .label::before { content: counter(step) ". "; color: var(--muted); }
+  .steps .detail, .section p { color: var(--muted); font-size: 14px; margin: 4px 0 8px; }
+  .section + .section { margin-top: 12px; }
+  .section h3 { font-size: 15px; margin: 0; }
+  .sources { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .compare { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+  .compare .product.pick { border-color: var(--accent); }
+  .badge { align-self: flex-start; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+  .pc { margin: 0; padding-left: 18px; font-size: 13px; }
+  .pc.pro li::marker { content: "+  "; }
+  .pc.con li::marker { content: "−  "; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+  .status-pill { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; text-transform: capitalize; }
   #cart-drawer { max-width: 760px; margin: 0 auto; padding: 0 16px; }
   #cart-drawer[hidden] { display: none; }
   footer { border-top: 1px solid var(--line); background: var(--panel); }
@@ -184,33 +202,149 @@
     return box;
   }
 
+  function productCard(product, reason) {
+    const card = el("div", "product");
+    if (product.image_url) {
+      const img = el("img"); img.alt = product.title || ""; img.loading = "lazy";
+      img.src = product.image_url;
+      card.appendChild(img);
+    }
+    const body = el("div", "body");
+    body.appendChild(el("div", "name", product.title));
+    if (product.price != null) body.appendChild(el("div", "price", money(product.price, product.currency)));
+    if (reason) body.appendChild(el("div", "reason", reason));
+    const opts = Object.entries(product.options || {});
+    if (opts.length) body.appendChild(el("div", "reason", opts.map(([k, v]) => `${k}: ${[].concat(v).join(", ")}`).join(" · ")));
+    if (product.in_stock === false) body.appendChild(el("div", "oos", "Out of stock"));
+    const b = el("button", null, opts.length ? "Choose options" : "Add to cart");
+    b.type = "button";
+    b.disabled = product.in_stock === false;
+    b.onclick = () => ask(opts.length ? `I'd like the ${product.title}. What options are there?` : `Add the ${product.title} to my cart.`);
+    body.appendChild(b);
+    card.appendChild(body);
+    return card;
+  }
+
+  function productRow(products) {
+    const row = el("div", "products");
+    products.forEach((pr) => { if (pr) row.appendChild(productCard(pr)); });
+    return row;
+  }
+
   function productsCard(p) {
     const wrap = el("div");
     if (p.title) wrap.appendChild(el("div", "card-title", p.title));
     const row = el("div", "products");
-    (p.items || []).forEach(({ product, reason }) => {
-      if (!product) return;
-      const card = el("div", "product");
-      const img = el("img"); img.alt = product.title; img.loading = "lazy";
-      if (product.image_url) img.src = product.image_url;
-      card.appendChild(img);
-      const body = el("div", "body");
-      body.appendChild(el("div", "name", product.title));
-      body.appendChild(el("div", "price", money(product.price, product.currency)));
-      if (reason) body.appendChild(el("div", "reason", reason));
-      const opts = Object.entries(product.options || {});
-      if (opts.length) body.appendChild(el("div", "reason", opts.map(([k, v]) => `${k}: ${v.join(", ")}`).join(" · ")));
-      if (product.in_stock === false) body.appendChild(el("div", "oos", "Out of stock"));
-      const b = el("button", null, opts.length ? "Choose options" : "Add to cart");
-      b.type = "button";
-      b.disabled = product.in_stock === false;
-      b.onclick = () => ask(opts.length ? `I'd like the ${product.title}. What options are there?` : `Add the ${product.title} to my cart.`);
-      body.appendChild(b);
-      card.appendChild(body);
+    (p.items || []).forEach(({ product, reason }) => { if (product) row.appendChild(productCard(product, reason)); });
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  // A plan toward a goal (a trip, an outfit): numbered steps, each with its products.
+  function planCard(p) {
+    const box = el("div", "panel");
+    if (p.title) box.appendChild(el("div", "card-title", p.title));
+    if (p.intro) box.appendChild(el("p", "intro", p.intro));
+    const ol = el("ol", "steps");
+    (p.steps || []).forEach((st) => {
+      const li = el("li");
+      li.appendChild(el("div", "label", st.label));
+      if (st.detail) li.appendChild(el("div", "detail", st.detail));
+      if (st.products && st.products.length) li.appendChild(productRow(st.products));
+      ol.appendChild(li);
+    });
+    box.appendChild(ol);
+    return box;
+  }
+
+  // Know-how, an idea, or an itinerary: short sections, then related products.
+  function guideCard(p) {
+    const box = el("div", "panel");
+    if (p.title) box.appendChild(el("div", "card-title", p.title));
+    (p.sections || []).forEach((sec) => {
+      const d = el("div", "section");
+      d.appendChild(el("h3", null, sec.heading));
+      const para = el("p"); setText(para, sec.body || ""); d.appendChild(para);
+      box.appendChild(d);
+    });
+    if (p.related_products && p.related_products.length) box.appendChild(productRow(p.related_products));
+    if (p.sources && p.sources.length) box.appendChild(el("div", "sources", "Sources: " + p.sources.join(" · ")));
+    return box;
+  }
+
+  function comparisonCard(p) {
+    const wrap = el("div");
+    if (p.title) wrap.appendChild(el("div", "card-title", p.title));
+    if (p.dimensions && p.dimensions.length) wrap.appendChild(el("p", "intro", "Comparing " + p.dimensions.join(", ")));
+    const row = el("div", "compare");
+    (p.entries || []).forEach((e) => {
+      if (!e.product) return;
+      const card = productCard(e.product, e.best_for ? `Best for ${e.best_for}` : null);
+      const body = card.querySelector(".body");
+      const btn = body.querySelector("button");
+      if (e.product_id && e.product_id === p.recommended_product_id) {
+        card.classList.add("pick");
+        body.insertBefore(el("span", "badge", "Recommended"), body.firstChild);
+      }
+      [["pro", e.pros], ["con", e.cons]].forEach(([kind, list]) => {
+        if (!list || !list.length) return;
+        const ul = el("ul", "pc " + kind);
+        list.forEach((t) => ul.appendChild(el("li", null, t)));
+        body.insertBefore(ul, btn);
+      });
       row.appendChild(card);
     });
     wrap.appendChild(row);
+    const d = p.price_delta;
+    if (d && d.amount) wrap.appendChild(el("p", "note", `Price difference: ${money(d.amount, (p.entries[0] && p.entries[0].product && p.entries[0].product.currency) || undefined)}`));
     return wrap;
+  }
+
+  function orderCard(p) {
+    const o = p.order || {};
+    const box = el("div", "panel");
+    const head = el("div", "card-title", `Order ${o.order_id || p.order_id || ""}`.trim());
+    box.appendChild(head);
+    if (o.status) box.appendChild(el("span", "status-pill", String(o.status).replace(/_/g, " ")));
+    if (p.summary) box.appendChild(el("p", "note", p.summary));
+    if (o.items && o.items.length) {
+      const ul = el("ul", "lines");
+      o.items.forEach((it) => {
+        const li = el("li");
+        li.appendChild(el("span", "t", `${it.title} × ${it.quantity}`));
+        li.appendChild(el("span", "p", money(it.price * it.quantity, o.currency)));
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    }
+    const dl = el("dl", "kv");
+    const row = (k, v) => { if (v) { dl.appendChild(el("dt", null, k)); dl.appendChild(el("dd", null, v)); } };
+    if (o.total != null) row("Total", money(o.total, o.currency));
+    if (o.placed_at) row("Placed", new Date(o.placed_at).toLocaleDateString());
+    row("Expected", o.estimated_delivery);
+    if (dl.children.length) box.appendChild(dl);
+    if (p.next_step) box.appendChild(el("p", "note", p.next_step));
+    if (o.tracking_url) {
+      const a = el("a", "primary", "Track package");
+      a.href = o.tracking_url; a.rel = "noopener"; a.target = "_blank";
+      box.appendChild(a);
+    }
+    return box;
+  }
+
+  // A facts box the store authors in full (e.g. a product disclosure).
+  function disclosureCard(p) {
+    const box = el("div", "panel");
+    if (p.title) box.appendChild(el("div", "card-title", p.title));
+    const dl = el("dl", "kv");
+    (p.rows || []).forEach((r) => {
+      dl.appendChild(el("dt", null, r.label));
+      dl.appendChild(el("dd", null, r.note ? `${r.value} (${r.note})` : r.value));
+    });
+    box.appendChild(dl);
+    (p.footnotes || []).forEach((f) => box.appendChild(el("p", "sources", f)));
+    if (p.sources && p.sources.length) box.appendChild(el("div", "sources", "Sources: " + p.sources.join(" · ")));
+    return box;
   }
 
   function checkoutCard(p) {
@@ -243,10 +377,15 @@
       case "products": return add(productsCard(p));
       case "checkout": return add(checkoutCard(p));
       case "suggestions": return add(suggestions(p));
+      case "plan": return add(planCard(p));
+      case "guide": return add(guideCard(p));
+      case "comparison": return add(comparisonCard(p));
+      case "order_status": return add(orderCard(p));
+      case "disclosure": return add(disclosureCard(p));
       default: {
+        // A component this page doesn't know yet: show its heading, never raw data.
         const box = el("div", "panel");
-        box.appendChild(el("div", "card-title", data.component));
-        box.appendChild(el("pre", "raw", JSON.stringify(p, null, 2)));
+        box.appendChild(el("div", "card-title", p.title || "Details"));
         return add(box);
       }
     }
