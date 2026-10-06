@@ -87,7 +87,7 @@ def _text(description: Any) -> str | None:
         description = description.get("plain") or description.get("html")
     if not description:
         return None
-    return html.unescape(_TAG.sub(" ", str(description))).strip() or None
+    return " ".join(html.unescape(_TAG.sub(" ", str(description))).split()) or None
 
 
 class ShopifyUCPBackend(StorefrontBackend):
