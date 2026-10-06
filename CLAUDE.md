@@ -23,7 +23,7 @@ merchant agents). The owner is connecting the shopping agent to their own Shopif
 ```bash
 git clone --depth 1 https://github.com/anthropics/commerce-agents vendor/commerce-agents
 python3 -m venv .venv && source .venv/bin/activate
-pip install -q -r vendor/commerce-agents/requirements.txt
+(cd vendor/commerce-agents && pip install -q -r requirements.txt)  # relative paths
 python -m pytest -q                      # tests against the simulated store
 ```
 
@@ -32,7 +32,10 @@ python -m pytest -q                      # tests against the simulated store
 The owner sets `SHOPIFY_STORE_DOMAIN` and `STORE_AGENT_ANTHROPIC_API_KEY` as environment
 variables (cloud environments drop `ANTHROPIC_API_KEY`; `my_store/app.py` copies the other
 name over) and
-allows `*.myshopify.com`, `api.shopify.com`, `api.anthropic.com` in network access. Then:
+allows `*.myshopify.com`, `api.shopify.com`, `api.anthropic.com` in network access (add
+`iknowledge-shopping-agent.onrender.com` to check the deploy, `cdn.shopify.com` for images in
+screenshots). `SHOPIFY_BUYER_COUNTRY` must be a country the store ships to (`SG` for iKnowledge);
+`US` or unset makes Shopify call every physical product sold out at the cart. Then:
 
 1. `python -m scripts.shopify_smoke --query "<word matching their products>"`; if search
    finds nothing, ask what the store sells.

@@ -6,5 +6,5 @@ cd "$(dirname "$0")"
 python3 -m venv .venv
 # shellcheck disable=SC1091
 source .venv/bin/activate
-pip install -q -r vendor/commerce-agents/requirements.txt
+(cd vendor/commerce-agents && pip install -q -r requirements.txt)  # its paths are relative
 echo "Ready. Run: source .venv/bin/activate && python -m scripts.walkthrough"
