@@ -39,6 +39,7 @@ import re
 import time
 import uuid
 from collections import deque
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
@@ -72,7 +73,17 @@ TOKEN_URL = "https://api.shopify.com/auth/access_token"
 
 # Variant lookups per product family; the reference caps a family's details at ~60 rows.
 MAX_VARIANT_FETCHES = 30
-_RETRIES = 5  # for Shopify's 429, 430 and 502-504 answers: 0.5+1+2+4+8s at most
+_RETRIES = 5  # cart and checkout writes, for 429, 430 and 502-504: 0.5+1+2+4+8s at most
+# Catalog reads retry less, and after Shopify throttles this server they stop for a while
+# (answered from the catalog index): live, after a test crawl, every search retried for
+# 15s, the retries kept the throttle going, and replies hung until the connection dropped.
+_READ_TOOLS = {"search_catalog", "get_product", "lookup_catalog", "search_shop_policies_and_faqs"}
+_READ_RETRIES = 2
+_COOLDOWN_SECONDS = 60.0
+_MAX_COOLDOWN_SECONDS = 300.0
+# The catalog as last read on a machine that could reach the store (scripts/catalog_snapshot.py),
+# shipped with the code: what the index starts from if the live read fails at boot.
+SNAPSHOT_PATH = Path(__file__).parent / "catalog_snapshot.json"
 # 429: rate limited. 430: Shopify's bot protection ("Security Rejection"), which a burst of
 # requests from one server IP can trip. 502-504: briefly down.
 _RETRY_STATUSES = (429, 430, 502, 503, 504)
@@ -322,6 +333,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         self._tags: dict[str, list[str]] = {}
         # Store health, for /healthz and for chips during an outage.
         self._failures: deque[float] = deque(maxlen=50)
+        self._cooldown_until = 0.0
         self._last_ok = 0.0
         self.last_error = ""
         self._faqs_loaded_at = 0.0
@@ -401,6 +413,9 @@ class ShopifyUCPBackend(StorefrontBackend):
         auth: bool = False,
         headers: dict[str, str] | None = None,
     ) -> Any:
+        read = tool in _READ_TOOLS
+        if read and (left := self._cooldown_until - time.monotonic()) > 0:
+            raise ShopifyError(f"the store is rate-limiting this server; catalog calls resume in {left:.0f}s")
         if ucp:
             meta = {"ucp-agent": {"profile": self.profile}, **arguments.get("meta", {})}
             arguments = {**arguments, "meta": meta}
@@ -413,7 +428,18 @@ class ShopifyUCPBackend(StorefrontBackend):
             "id": next(self._ids),
             "params": {"name": tool, "arguments": arguments},
         }
-        response = await self._post(self.ucp_endpoint if ucp else self.mcp_endpoint, body, headers)
+        url = self.ucp_endpoint if ucp else self.mcp_endpoint
+        response = await self._post(url, body, headers, _READ_RETRIES if read else _RETRIES)
+        if response.status_code in (429, 430):
+            try:
+                pause = float(response.headers.get("retry-after", ""))
+            except ValueError:
+                pause = _COOLDOWN_SECONDS
+            pause = min(max(pause, _COOLDOWN_SECONDS), _MAX_COOLDOWN_SECONDS)
+            self._cooldown_until = time.monotonic() + pause
+            logger.warning(
+                "shopify throttled %s (HTTP %s): catalog calls pause %.0fs", tool, response.status_code, pause
+            )
         response.raise_for_status()
         data = response.json()
         if "error" in data:
@@ -436,17 +462,17 @@ class ShopifyUCPBackend(StorefrontBackend):
             raise error(f"{tool}: {'; '.join(said) if said else content}")
         return content
 
-    async def _post(self, url: str, body: dict[str, Any], headers: dict[str, str]) -> httpx.Response:
+    async def _post(
+        self, url: str, body: dict[str, Any], headers: dict[str, str], retries: int = _RETRIES
+    ) -> httpx.Response:
         """POST, retried when Shopify is rate-limiting or briefly down (429, 502-504).
         Seen live: four chats at once got 429 on cart writes, which reached the shopper as
         "the store did not accept that". Waits Retry-After when given, else 0.5s, 1s, 2s."""
-        for attempt in range(_RETRIES + 1):
+        for attempt in range(retries + 1):
             response = await self._http.post(url, json=body, headers=headers)
-            if response.status_code not in _RETRY_STATUSES or attempt == _RETRIES:
+            if response.status_code not in _RETRY_STATUSES or attempt == retries:
                 if response.status_code in _RETRY_STATUSES:
-                    logger.warning(
-                        "shopify gave up after %d retries: HTTP %s", _RETRIES, response.status_code
-                    )
+                    logger.warning("shopify gave up after %d retries: HTTP %s", retries, response.status_code)
                 return response
             logger.warning("shopify HTTP %s, retry %d", response.status_code, attempt + 1)
             try:
@@ -649,6 +675,8 @@ class ShopifyUCPBackend(StorefrontBackend):
                         break
             except (ShopifyError, httpx.HTTPError, ValueError, KeyError) as error:
                 self._failed(error)
+                if not self._index:
+                    self._load_snapshot()
                 logger.warning("catalog index read failed (%s); keeping %d products", error, len(self._index))
                 self._index_until = time.monotonic() + 60
                 return self._index
@@ -657,6 +685,38 @@ class ShopifyUCPBackend(StorefrontBackend):
             self._index_until = time.monotonic() + _INDEX_SECONDS
             logger.info("catalog index: %d products", len(self._index))
             return self._index
+
+    def snapshot(self) -> dict[str, Any]:
+        """The index as JSON, for SNAPSHOT_PATH."""
+        return {
+            "store": self.domain,
+            "products": [
+                {
+                    "product": p.model_dump(exclude_none=True),
+                    "collections": self._collections.get(p.product_id, []),
+                    "tags": self._tags.get(p.product_id, []),
+                    "variant_id": self._default_variant.get(p.product_id),
+                }
+                for p in self._index
+            ],
+        }
+
+    def _load_snapshot(self, path: Path | None = None) -> None:
+        path = path or SNAPSHOT_PATH
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, ValueError):
+            return
+        if data.get("store") != self.domain:
+            return  # another store's catalog
+        for row in data.get("products") or []:
+            product = Product.model_validate(row["product"])
+            self._index.append(product)
+            self._collections[product.product_id] = row.get("collections") or []
+            self._tags[product.product_id] = row.get("tags") or []
+            if row.get("variant_id"):
+                self._default_variant.setdefault(product.product_id, row["variant_id"])
+        logger.warning("catalog index from the shipped snapshot: %d products", len(self._index))
 
     def collections(self) -> dict[str, list[Product]]:
         """The index by collection, most specific collection per product, largest first."""
@@ -683,15 +743,24 @@ class ShopifyUCPBackend(StorefrontBackend):
             return list(self._index)
         scored = []
         for p in self._index:
-            hay = " ".join(
-                [
-                    p.title,
-                    p.short_description or "",
-                    *self._collections.get(p.product_id, []),
-                    *self._tags.get(p.product_id, []),
-                ]
-            ).lower()
-            score = sum(1 for group in words if any(re.search(rf"\b{re.escape(w)}", hay) for w in group))
+            # A word in the title counts most, then the summary, then collection and tags.
+            fields = (
+                (3, p.title.lower()),
+                (2, (p.short_description or "").lower()),
+                (
+                    1,
+                    " ".join(
+                        [*self._collections.get(p.product_id, []), *self._tags.get(p.product_id, [])]
+                    ).lower(),
+                ),
+            )
+            score = sum(
+                max(
+                    (w for w, text in fields if any(re.search(rf"\b{re.escape(x)}", text) for x in group)),
+                    default=0,
+                )
+                for group in words
+            )
             if score:
                 scored.append((score, p))
         scored.sort(key=lambda sp: -sp[0])
@@ -733,8 +802,11 @@ class ShopifyUCPBackend(StorefrontBackend):
         self._last_ok = time.monotonic()
 
     def degraded(self) -> bool:
-        """Several catalog calls failed lately and none has worked since."""
+        """Several catalog calls failed lately and none has worked since, or Shopify is
+        throttling this server."""
         now = time.monotonic()
+        if self._cooldown_until > now:
+            return True
         recent = [t for t in self._failures if now - t < _DEGRADED_WINDOW and t > self._last_ok]
         return len(recent) >= _DEGRADED_FAILURES
 
@@ -742,6 +814,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         now = time.monotonic()
         return {
             "degraded": self.degraded(),
+            "catalog_paused_seconds": max(0, round(self._cooldown_until - now)),
             "failures_last_5m": sum(1 for t in self._failures if now - t < 300),
             "last_error": self.last_error or None,
             "catalog_products": len(self._index),

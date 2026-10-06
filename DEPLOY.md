@@ -79,6 +79,12 @@ for iKnowledge; anything else means shipped items get refused). Render's logs sh
 Shopify retry as `shopify HTTP 429, retry n` (430 is Shopify's bot protection), and each
 search answered from the catalog index while Shopify fails.
 
+When Shopify throttles the server (429, or 430 bot protection), catalog calls pause for
+60 s or more (`catalog_paused_seconds`) instead of retrying every search. Searches are
+answered from the catalog index meanwhile, so shoppers still see products. If the server
+boots while throttled, the index starts from `my_store/catalog_snapshot.json`; refresh it
+with `python -m scripts.catalog_snapshot` after catalog changes.
+
 A burst from one IP hits this server's own per-IP limits first: the 21st new chat in an
 hour gets "Too many new chats from your connection" (HTTP 429). For a crawl, set
 `LOAD_TEST_TOKEN` and send it as `X-Load-Test-Token`.

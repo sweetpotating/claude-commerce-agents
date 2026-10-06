@@ -353,6 +353,8 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         has_chips, titles, held, outage = False, [], [], False
         said, compared, last_records = False, None, []
         flow = TextFlow()
+        # A search that failed this turn: its chips would fail too, so only cart chips.
+        search_down = degraded
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
@@ -370,6 +372,8 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                     ]
                 if event.type == "turn_complete":
                     guards.token_budget.charge(event.data.get("usage") or {})
+                if event.type == "tool_result" and event.data.get("tool") == "search_products":
+                    search_down |= bool(event.data.get("is_error"))
                 if event.type == "tool_result" and event.data.get("tool") == "add_to_cart":
                     if not event.data.get("is_error"):
                         funnel.record(s.session_id, "added_to_cart", source="chat")
@@ -383,7 +387,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                 if event.type == "ui":
                     component, payload = event.data.get("component"), event.data.get("payload") or {}
                     if component == "suggestions":
-                        kept = clean_chips(s, payload.get("suggestions") or [], degraded)
+                        kept = clean_chips(s, payload.get("suggestions") or [], search_down)
                         if not kept:
                             continue  # the host adds checked ones at the end
                         event = AgentEvent.ui("suggestions", {**payload, "suggestions": kept})
@@ -417,7 +421,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                 if cards:
                     funnel.record(s.session_id, "products_shown", source="fallback")
                     yield to_sse(AgentEvent.ui("products", cards))
-                if chips := clean_chips(s, chips, degraded):
+                if chips := clean_chips(s, chips, search_down):
                     has_chips = True
                     yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
                 if s.messages and s.messages[-1].get("role") == "user":  # keep turns alternating
@@ -440,7 +444,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         for event in held:
             yield to_sse(event)
         if not has_chips and not outage:  # during an outage a chip would only fail again
-            if chips := clean_chips(s, discovery.fallback_chips(titles), degraded):
+            if chips := clean_chips(s, discovery.fallback_chips(titles), search_down):
                 yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
         if not failed:
             await agent.update_memory(s.messages, ctx)

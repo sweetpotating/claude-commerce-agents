@@ -201,6 +201,31 @@ Items 15, 18 and 19 also depend on what the model chooses. The host fallbacks co
 - 22 API flows run with 0 errors.
 - The Chromium walk passes **22/22**.
 
+#### i18: "search tool is down" on the live widget, 11:54pm, 2026-10-06
+
+The phone screenshot showed:
+
+- "The search tool is down", twice
+- "Retry gift search" chips
+- a dropped connection
+- the old "Gift ideas" starter
+
+At the same time, the store's search answered from this container in 0.75 s, so the
+failure was specific to the Render server. Either Render ran an older commit (the starter
+and the unfiltered chips are old behaviour), or Shopify was throttling Render's IP after
+the crawl. The old code made throttling worse: each failed search retried for up to 15 s,
+which kept the throttle going and made replies long enough for the connection to drop.
+
+Fixes:
+
+- **Pause.** After a 429 or 430, catalog reads stop for 60–300 s (`catalog_paused_seconds` in `/healthz`).
+- **Fewer retries.** Catalog reads retry twice (1.5 s); cart writes keep five.
+- **Index fallback.** Searches are answered from the catalog index while Shopify is paused or failing.
+- **Snapshot.** A boot while throttled starts the index from `my_store/catalog_snapshot.json` (114 products).
+- **Chips.** A turn whose search failed offers only cart chips.
+
+Replayed in-process with the store throttled, "Gift ideas" and "Browse gifts under $50" each answered in 0.0 s with gift cards, with no errors and no retry chips.
+
 ## Findings and fixes
 
 1. **Every physical product was "sold out" at the cart (fixed by configuration).**

@@ -76,6 +76,7 @@ async def test_search_outage_answers_from_the_index(store):
         await backend.search_products(ctx(), "tent")
     assert backend.degraded() and backend.health()["failures_last_5m"] >= 3
     store.search_failures = 0
+    backend._cooldown_until = 0.0  # the pause after throttling has run out
     await backend.search_products(ctx(), "tent")
     assert not backend.degraded()
 
@@ -232,3 +233,32 @@ def test_load_test_token_skips_per_ip_limits(monkeypatch):
     ok = client.post("/api/session", json={}, headers={"x-load-test-token": "t0ken"})
     assert ok.status_code == 200
     assert "commit" in client.get("/healthz").json()
+
+
+# After the crawl: Shopify throttling this server pauses catalog calls instead of retrying
+# every search for 15 s, and a server that boots throttled starts from the shipped snapshot.
+async def test_a_throttled_store_pauses_catalog_calls(store):
+    backend = make_backend(store)
+    store.search_failures = 100
+    with pytest.raises(Exception, match="not answering|rate-limiting"):
+        await backend.search_products(ctx(), "tent")
+    calls = len(store.calls)
+    with pytest.raises(Exception, match="not answering|rate-limiting"):
+        await backend.search_products(ctx(), "tour")
+    assert len(store.calls) == calls  # paused: Shopify is not called again
+    assert backend.degraded() and backend.health()["catalog_paused_seconds"] > 0
+
+
+async def test_boot_while_throttled_uses_the_snapshot(store, tmp_path, monkeypatch):
+    first = make_backend(store)
+    await first.catalog_index()
+    path = tmp_path / "snapshot.json"
+    import json
+
+    path.write_text(json.dumps(first.snapshot()))
+    monkeypatch.setattr("my_store.shopify_backend.SNAPSHOT_PATH", path)
+    store.search_failures = 100
+    booted = make_backend(store)
+    assert len(await booted.catalog_index()) == 5
+    found = await booted.search_products(ctx(), "tour")
+    assert {p.title for p in found} == {"Canyon Day Tour", "Kuala Lumpur City Tour"}
