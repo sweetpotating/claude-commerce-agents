@@ -42,7 +42,7 @@ from shopping_agent import (
 from shopping_agent.serialization import cart_payload
 from shopping_agent_runtime import ShoppingAgent
 
-from . import guards
+from . import discovery, guards
 from .backend import MyStoreBackend
 from .industry import industry_config_overrides, industry_extensions
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
@@ -71,6 +71,8 @@ else:
         brand_voice="friendly, outdoorsy, and brief",
         # Switch off systems you don't have, e.g. enable_orders=False on a referral surface.
     )
+# A shopping request's first round is a product search, before any question (discovery.py).
+discovery.install()
 agent = ShoppingAgent(
     backend=backend,
     skills_dir=SKILLS_DIR,
