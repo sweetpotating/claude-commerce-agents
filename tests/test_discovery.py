@@ -51,3 +51,60 @@ def test_terms_questions_still_read_the_policies_first():
     text = "how many days do I have to return an item?"
     tool = first_forced_tool(orchestrator.GROUNDING_RULES, host.agent.config, text, ShoppingSessionState())
     assert tool == "search_policies"
+
+
+def test_a_tapped_chip_always_searches():
+    from my_store.discovery import chip_tapped
+
+    state = ShoppingSessionState()
+    text = "Surprise me"  # no shopping cue in the wording
+
+    def forced(t, st):
+        return first_forced_tool(orchestrator.GROUNDING_RULES, host.agent.config, t, st)
+
+    assert forced(text, state) is None
+    chip_tapped(state)
+    assert forced(text, state) == "search_products"
+    # Only that turn; and a cart chip doesn't search.
+    assert forced(text, state) is None
+    chip_tapped(state)
+    assert forced("Add the SIM to my cart", state) is None
+
+
+def test_fallback_chips_come_from_the_products_shown():
+    from my_store.discovery import fallback_chips, product_titles
+
+    payload = {
+        "steps": [
+            {"products": [{"title": "Mt Fuji Day Trip from Tokyo"}]},
+            {"products": [{"title": "Japan eSIM – 7 Days 10GB"}]},
+        ]
+    }
+    titles = product_titles("plan", payload)
+    assert titles == ["Mt Fuji Day Trip from Tokyo", "Japan eSIM – 7 Days 10GB"]
+    chips = fallback_chips(titles)
+    assert chips[:2] == ["Compare Mt Fuji Day Trip and Japan eSIM", "Show more like Mt Fuji Day Trip"]
+    assert len(chips) == 4 and len(fallback_chips([])) == 4
+
+
+async def test_every_reply_ends_with_chips(monkeypatch):
+    from commerce_common.streaming import AgentEvent
+
+    async def quiet_turn(messages, ctx, state):
+        yield AgentEvent.text_delta("Here you go.")
+        yield AgentEvent.ui("products", {"items": [{"product": {"title": "Merino Tee"}}]})
+
+    async def no_memory(*_):
+        return None
+
+    monkeypatch.setattr(host.agent, "stream_turn", quiet_turn)
+    monkeypatch.setattr(host.agent, "update_memory", no_memory)
+    from fastapi.testclient import TestClient
+
+    client = TestClient(host.app)
+    sid = client.post("/api/session", json={}).json()["session_id"]
+    body = client.post(
+        "/api/chat", json={"message": "tees", "source": "chip"}, headers={"x-session-id": sid}
+    ).text
+    last = [b for b in body.split("\n\n") if b.startswith("event: ui")][-1]
+    assert '"suggestions"' in last and "Show more like Merino Tee" in last

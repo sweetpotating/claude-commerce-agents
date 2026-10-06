@@ -106,6 +106,8 @@ class StartSession(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     page: PageContext | None = None
+    # "chip" when the shopper tapped a suggestion: that turn always searches the catalog.
+    source: str | None = Field(default=None, max_length=16)
 
 
 def current(session_id: str | None) -> Session:
@@ -179,17 +181,31 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     else:
         s.messages.append({"role": "user", "content": body.message})
     ctx = context(s, body.page)
+    if body.source == "chip":
+        discovery.chip_tapped(s.state)
 
     async def turn():
+        # Every reply ends with chips: when the model gave none, the host adds them from the
+        # products this reply showed, so the shopper always has a next step to tap.
+        has_chips, titles = False, []
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
+                if event.type == "ui":
+                    component, payload = event.data.get("component"), event.data.get("payload") or {}
+                    has_chips |= component == "suggestions"
+                    titles += discovery.product_titles(component, payload)
                 yield to_sse(event)
+            failed = False
         except Exception:
             logger.exception("chat turn failed")
             yield to_sse(AgentEvent.error("Something went wrong. Please try again."))
-            return
-        await agent.update_memory(s.messages, ctx)
+            failed = True
+        if not has_chips:
+            chips = discovery.fallback_chips(titles)
+            yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))
+        if not failed:
+            await agent.update_memory(s.messages, ctx)
 
     return StreamingResponse(
         with_keepalive(turn()),

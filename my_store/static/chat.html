@@ -185,6 +185,8 @@
     set: (v) => { try { v ? sessionStorage.setItem(SESSION_KEY, v) : sessionStorage.removeItem(SESSION_KEY); } catch {} },
   };
   let sessionId = null;
+  // Shown on the greeting and after a dropped reply; each one starts a product search.
+  const STARTER_CHIPS = ["Show me your best picks", "Plan a 2-day trip", "Compare your plans", "Gift ideas"];
   let busy = false;
   let cart = { items: [], item_count: 0, subtotal: 0, currency: "" };
 
@@ -623,7 +625,7 @@
     const row = el("div", "chips");
     (p.suggestions || []).forEach((s) => {
       const b = el("button", "chip", s); b.type = "button";
-      b.onclick = () => ask(s);
+      b.onclick = () => ask(s, "chip"); // a chip always searches the catalog
       row.appendChild(b);
     });
     return row;
@@ -651,7 +653,7 @@
     }
   }
 
-  async function ask(text) {
+  async function ask(text, source) {
     if (busy || !text.trim()) return;
     if (!sheet.hidden) closeProduct(); // a message goes back to the conversation
     busy = true; send.disabled = true;
@@ -664,7 +666,7 @@
       const r = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json", "x-session-id": sessionId },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, source: source || null }),
       });
       if (r.status === 401) { sessionId = null; saved.set(null); throw new Error("Session expired. Send your message again."); }
       if (!r.ok || !r.body) throw new Error(await problem(r));
@@ -710,9 +712,10 @@
         // shopper): say so plainly and offer the same message again.
         const box = el("div", "error", "The connection dropped before the reply finished. ");
         const again = el("button", "chip", "Try again"); again.type = "button";
-        again.onclick = () => { box.remove(); ask(text); };
+        again.onclick = () => { box.remove(); ask(text, source); };
         box.appendChild(again);
         add(box);
+        add(suggestions({ suggestions: STARTER_CHIPS }));
       } else {
         add(el("div", "error", e.message || "Something went wrong. Please try again."));
       }
@@ -782,7 +785,7 @@
     if (!resumed) {
       add(el("div", "msg bot", "Hi! What are you looking for today? Tap one to see picks right away."));
       // One tap to products: each starter goes straight to recommendations.
-      add(suggestions({ suggestions: ["Show me your best picks", "Plan a 2-day trip", "Compare your plans", "Gift ideas under $50"] }));
+      add(suggestions({ suggestions: STARTER_CHIPS }));
     }
     if (!embedded) input.focus();
   });

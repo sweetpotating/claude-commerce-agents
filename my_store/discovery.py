@@ -94,8 +94,77 @@ def shopping_request(text: str) -> bool:
     return any(cue in padded for cue in SHOPPING_CUES)
 
 
-def _discovery(config: Any, text: str, _: ShoppingSessionState) -> dict[str, Any] | None:
+# Sessions whose next message came from a tapped suggestion chip (keyed by state object):
+# a chip is a step toward products, so it searches even when its wording has no cue.
+_chip_turns: set[int] = set()
+
+
+def chip_tapped(state: ShoppingSessionState) -> None:
+    _chip_turns.add(id(state))
+
+
+def _skip(text: str) -> bool:
+    padded = f" {text.lower().strip()} "
+    return bool(_SKIP_START.match(text)) or any(cue in padded for cue in SKIP_CUES)
+
+
+def _discovery(config: Any, text: str, state: ShoppingSessionState) -> dict[str, Any] | None:
+    if id(state) in _chip_turns:
+        _chip_turns.discard(id(state))
+        if not _skip(text):
+            return {}
     return {} if shopping_request(text) else None
+
+
+# -- Suggestion chips on every reply ----------------------------------------------------
+
+# Components whose payload carries products, and where their records sit.
+_PRODUCT_PATHS = {
+    "products": [("items", "product")],
+    "comparison": [("entries", "product")],
+    "plan": [("steps", "products")],
+    "itinerary": [("days", "products")],
+    "guide": [("related_products", None)],
+    "plan_matrix": [("plans", None)],
+}
+
+STARTER_CHIPS = ("Show me your best picks", "Plan a 2-day trip", "Gift ideas", "Compare your plans")
+
+
+def product_titles(component: str, payload: dict[str, Any]) -> list[str]:
+    """Titles of the products a rendered component showed, in display order."""
+    titles: list[str] = []
+    for list_key, inner in _PRODUCT_PATHS.get(component, []):
+        for entry in payload.get(list_key) or []:
+            if not isinstance(entry, dict):
+                continue
+            found = entry.get(inner) if inner else entry
+            for record in found if isinstance(found, list) else [found]:
+                if isinstance(record, dict) and record.get("title"):
+                    titles.append(record["title"])
+    return titles
+
+
+def _short(title: str) -> str:
+    head = re.split(r"\s[–—-]\s|\(", title)[0].strip()
+    words = head.split()
+    return " ".join(words[:4]) if len(words) > 4 else head
+
+
+def fallback_chips(titles: list[str], limit: int = 4) -> list[str]:
+    """Chips for a reply that ended without any: next steps from the products it showed,
+    then general discovery. Every one leads to a product search when tapped."""
+    seen = list(dict.fromkeys(_short(t) for t in titles if t))
+    chips: list[str] = []
+    if len(seen) >= 2:
+        chips.append(f"Compare {seen[0]} and {seen[1]}")
+    if seen:
+        chips.append(f"Show more like {seen[0]}")
+    for starter in STARTER_CHIPS:
+        if len(chips) >= limit:
+            break
+        chips.append(starter)
+    return chips[:limit]
 
 
 DISCOVERY_RULE = GroundingRule("discovery", "search_products", _discovery)
