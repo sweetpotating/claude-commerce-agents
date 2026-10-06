@@ -16,7 +16,12 @@ the agent with ``shopify_agent_config()``, which switches those systems off.
 
 Settings (environment): SHOPIFY_STORE_DOMAIN (required), UCP_AGENT_PROFILE_URL (your hosted
 agent profile), SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET (Dev Dashboard catalog API key,
-needed for Checkout MCP), SHOPIFY_BUYER_COUNTRY (e.g. US), CHECKOUT_UTM_SOURCE.
+needed for Checkout MCP), SHOPIFY_BUYER_COUNTRY, CHECKOUT_UTM_SOURCE.
+
+Set SHOPIFY_BUYER_COUNTRY to a country one of the store's markets ships to (SG for the
+iKnowledge store). Without it Shopify places the buyer by the server's IP; a country with no
+shipping makes every physical product come back from the cart as "already sold out", even
+though search reports it available. Items that need no shipping are unaffected.
 
 Docs: https://shopify.dev/docs/agents
 """
@@ -62,6 +67,19 @@ MAX_VARIANT_FETCHES = 30
 _ZERO_DECIMAL = {"JPY", "KRW", "VND", "CLP", "ISK", "UGX", "XAF", "XOF"}
 _UNAVAILABLE_CODES = ("out_of_stock", "insufficient_stock", "unavailable", "not_available", "sold_out")
 _TAG = re.compile(r"<[^>]+>")
+# search_shop_policies_and_faqs answers only questions close to the store's own FAQ wording
+# and returns [] otherwise (live: "service fees", "ticket transfer", even "refund"). These
+# phrasings reach the store's general policies, which often settle the question anyway.
+_FALLBACK_POLICY_QUERIES = ("What is your return policy?", "What is your shipping policy?")
+# What this backend needs the model to know about Shopify, added to the system prompt.
+SHOPIFY_PROMPT_NOTES = (
+    "The store's search matches every word of a query, so a long query often finds nothing: "
+    "search one or two key words (e.g. 'Singapore', 'tour', 'plan'), and try a single word "
+    "before concluding the store does not carry something. "
+    "The checkout card's 'Check out securely' button opens the store's own Shopify checkout, "
+    "where the customer enters contact, delivery, and payment details and places the order; "
+    "say that, rather than that they confirm in the app."
+)
 
 
 class ShopifyError(RuntimeError):
@@ -505,10 +523,13 @@ class ShopifyUCPBackend(StorefrontBackend):
             # the buyer's IP ("Missing required buyer IP header"). The checkout comes back
             # "incomplete" until the buyer gives contact details on Shopify's page.
             lines = await self._lines(session)
+            checkout: dict[str, Any] = {
+                "line_items": [{"quantity": q, "item": {"id": vid}} for vid, q in lines.items()]
+            }
+            if self._context():
+                checkout["context"] = self._context()
             checkout_args = {
-                "checkout": {
-                    "line_items": [{"quantity": q, "item": {"id": vid}} for vid, q in lines.items()]
-                },
+                "checkout": checkout,
                 "meta": {"idempotency-key": str(uuid.uuid4())},
             }
             try:
@@ -540,6 +561,16 @@ class ShopifyUCPBackend(StorefrontBackend):
         return None
 
     async def search_policies(self, session: ShoppingSessionContext, query: str) -> list[Policy]:
+        found = await self._policies(query)
+        if found:
+            return found
+        seen: dict[str, Policy] = {}
+        for fallback in _FALLBACK_POLICY_QUERIES:
+            for policy in await self._policies(fallback):
+                seen.setdefault(policy.policy_id, policy)
+        return list(seen.values())
+
+    async def _policies(self, query: str) -> list[Policy]:
         content = await self._call("search_shop_policies_and_faqs", {"query": query}, ucp=False)
         # Live stores answer with a JSON list of {"question", "answer"} pairs.
         entries = content if isinstance(content, list) else content.get("policies") or content.get("results")
@@ -583,4 +614,6 @@ def shopify_agent_config(**overrides: Any) -> ShoppingAgentConfig:
             r"gid://shopify/(?:Product|ProductVariant|p)/[\w-]+",
         ),
     }
-    return ShoppingAgentConfig(**(defaults | overrides))
+    merged = defaults | overrides
+    merged["domain_search_notes"] = f"{merged['domain_search_notes']} {SHOPIFY_PROMPT_NOTES}".strip()
+    return ShoppingAgentConfig(**merged)

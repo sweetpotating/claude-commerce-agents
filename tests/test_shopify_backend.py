@@ -13,7 +13,7 @@ from shopping_agent import ShoppingSessionContext, ShoppingSessionState
 from shopping_agent.executor import ShoppingToolExecutor, build_memory
 from shopping_agent.gates import OPTIONS_GATE, PROVENANCE_GATE
 
-from my_store.shopify_backend import ShopifyUCPBackend, shopify_agent_config
+from my_store.shopify_backend import SHOPIFY_PROMPT_NOTES, ShopifyUCPBackend, shopify_agent_config
 
 from .fake_shopify import SHOP, FakeShopifyStore
 
@@ -24,6 +24,7 @@ TEE, TEE_S, TEE_M, TEE_L = (
     "gid://shopify/ProductVariant/103",
 )
 TENT = "gid://shopify/Product/2"
+TOUR = "gid://shopify/Product/4"
 
 
 @pytest.fixture
@@ -32,6 +33,7 @@ def store() -> FakeShopifyStore:
 
 
 def make_backend(store: FakeShopifyStore, **kwargs) -> ShopifyUCPBackend:
+    kwargs.setdefault("buyer_country", "US")
     return ShopifyUCPBackend(
         SHOP,
         agent_profile_url="https://agent.example/ucp-profile.json",
@@ -105,6 +107,7 @@ async def test_discovery_to_checkout_through_the_executor(store):
     assert checkout_call[2]["authorization"] == "Bearer header.payload.sig"
     assert checkout_call[2]["shopify-storefront-buyer-ip"] == "203.0.113.7"
     assert len(checkout_call[1]["checkout"]["line_items"]) == 2
+    assert checkout_call[1]["checkout"]["context"] == {"address_country": "US"}
 
     # Every UCP call carried the agent profile.
     assert all(
@@ -155,9 +158,39 @@ async def test_policies_come_from_the_storefront_endpoint(store):
     ex = make_executor(make_backend(store))
     out = await ex.execute("search_policies", {"query": "returns"})
     assert "30 days" in out.result_text
+    assert "shipping policy" not in out.result_text  # an answer found needs no fallback
+
+
+async def test_a_policy_search_shopify_cannot_place_falls_back_to_the_general_policies(store):
+    # Live, "Can I transfer a booking, any service fees?" comes back []; the return policy
+    # is where the store says bookings and tickets are non-refundable.
+    ex = make_executor(make_backend(store))
+    out = await ex.execute("search_policies", {"query": "ticket transfer resale service fees"})
+    assert not out.is_error
+    assert "non-refundable" in out.result_text and "3-7 business days" in out.result_text
+
+
+async def test_without_a_buyer_country_shopify_calls_physical_goods_sold_out(store):
+    # Seen live: with no country (or one the store does not ship to) every shipped product is
+    # "already sold out" at the cart while search says available; vouchers still add.
+    ex = make_executor(make_backend(store, buyer_country=None))
+    await ex.execute("search_products", {"query": "tent tour"})
+    refused = await ex.execute("add_to_cart", {"product_id": TENT})
+    assert refused.is_error and "already sold out" in refused.result_text
+    assert not (await ex.execute("add_to_cart", {"product_id": TOUR})).is_error
+
+    ex = make_executor(make_backend(FakeShopifyStore(), buyer_country="US"))
+    await ex.execute("search_products", {"query": "tent"})
+    assert not (await ex.execute("add_to_cart", {"product_id": TENT})).is_error
 
 
 def test_config_switches_off_what_shopify_has_no_tool_for():
     absent = shopify_agent_config().absent_tools()
     assert {"get_orders", "get_order_status", "get_fulfillment_options"} <= absent
     assert "checkout" not in absent
+
+
+def test_shopify_notes_reach_the_prompt_whatever_the_search_notes():
+    assert SHOPIFY_PROMPT_NOTES in shopify_agent_config().domain_search_notes
+    custom = shopify_agent_config(domain_search_notes="We sell tours.").domain_search_notes
+    assert custom.startswith("We sell tours.") and SHOPIFY_PROMPT_NOTES in custom

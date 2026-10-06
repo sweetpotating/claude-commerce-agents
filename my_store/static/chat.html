@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shopping Assistant</title>
 <style>
@@ -547,7 +548,7 @@
     busy = true; send.disabled = true;
     log.querySelectorAll(".chips").forEach((n) => n.remove()); // old suggestions go stale
     add(el("div", "msg me", text));
-    let bubble = null, buf = "";
+    let bubble = null, buf = "", afterTool = false;
     const status = add(el("div", "status", "Thinking…"));
     try {
       await ensureSession();
@@ -577,8 +578,12 @@
           let d; try { d = JSON.parse(data); } catch { continue; }
           if (ev === "text_delta") {
             if (!bubble) { bubble = el("div", "msg bot"); log.insertBefore(bubble, status); }
+            // Text resuming after a tool call is a new sentence, not a continuation.
+            if (afterTool && buf && !/\s$/.test(buf)) buf += "\n\n";
+            afterTool = false;
             buf += d.text || ""; setText(bubble, buf); scrollDown();
           } else if (ev === "tool_call") {
+            afterTool = true;
             status.textContent = (d.label || "Working") + "…";
           } else if (ev === "ui") {
             bubble = null; buf = ""; // text after a card starts a new bubble

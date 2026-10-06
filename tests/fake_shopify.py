@@ -11,6 +11,10 @@ from typing import Any
 import httpx
 
 SHOP = "trailhead-demo.myshopify.com"
+# Countries the store's markets ship to. As live: a cart whose buyer country is missing (Shopify
+# then goes by the caller's IP) or outside these drops every line that needs shipping, with
+# the same "already sold out" warning as real stock-outs; items needing no shipping still add.
+MARKET = {"US"}
 
 _VARIANTS = {
     "gid://shopify/ProductVariant/101": ("gid://shopify/Product/1", {"Size": "S"}, 4800, True),
@@ -18,7 +22,9 @@ _VARIANTS = {
     "gid://shopify/ProductVariant/103": ("gid://shopify/Product/1", {"Size": "L"}, 5200, True),
     "gid://shopify/ProductVariant/201": ("gid://shopify/Product/2", {"Title": "Default Title"}, 22900, True),
     "gid://shopify/ProductVariant/301": ("gid://shopify/Product/3", {"Title": "Default Title"}, 1800, True),
+    "gid://shopify/ProductVariant/401": ("gid://shopify/Product/4", {"Title": "Default Title"}, 8900, True),
 }
+_NO_SHIPPING = {"gid://shopify/ProductVariant/401"}  # an e-voucher
 # Listed as available in search, but the cart refuses it (tracked inventory at 0), as seen live.
 _SOLD_OUT_AT_CART = {"gid://shopify/ProductVariant/301"}
 _PRODUCTS = {
@@ -37,18 +43,37 @@ _PRODUCTS = {
         "description": {"html": "Merino hiking socks."},
         "options": {"Title": ["Default Title"]},
     },
+    "gid://shopify/Product/4": {
+        "title": "Canyon Day Tour",
+        "description": {"html": "Guided day hike. Instant e-voucher."},
+        "options": {"Title": ["Default Title"]},
+    },
 }
+# As live: Q&A pairs, found only by a query close to their wording ("refund" and "service
+# fees" both come back empty on the real store).
+_FAQS = [
+    (
+        ("return",),
+        "What is your return policy?",
+        "Unused items can be returned within 30 days of delivery for a full refund. "
+        "Tours and gift cards are non-refundable.",
+    ),
+    (("credit",), "Do you accept store credit?", "The store accepts store credit."),
+    (("shipping", "ship"), "What is your shipping policy?", "Orders ship in 3-7 business days."),
+]
 
 
 def _variant(vid: str) -> dict[str, Any]:
     product_id, values, amount, available = _VARIANTS[vid]
-    return {
+    return {  # live shape (iknowledge-dev, 2026-10): no seller, availability is just a flag
         "id": vid,
+        "sku": f"TH-{vid[-3:]}",
         "title": " / ".join(values.values()),
         "price": {"amount": amount, "currency": "USD"},
-        "availability": {"available": available, "status": "in_stock" if available else "out_of_stock"},
+        "availability": {"available": available},
         "options": [{"name": n, "label": label} for n, label in values.items()],
-        "seller": {"name": "Trailhead", "domain": SHOP},
+        "requires": {"shipping": vid not in _NO_SHIPPING},
+        "checkout_url": f"https://{SHOP}/cart/{vid.rsplit('/', 1)[-1]}:1",
     }
 
 
@@ -62,18 +87,7 @@ def _product(pid: str, variants: list[str]) -> dict[str, Any]:
         "options": [
             {
                 "name": name,
-                "values": [
-                    {
-                        "label": label,
-                        "exists": True,
-                        "available": any(
-                            avail
-                            for p, vals, _, avail in _VARIANTS.values()
-                            if p == pid and vals.get(name) == label
-                        ),
-                    }
-                    for label in labels
-                ],
+                "values": [{"label": label} for label in labels],  # live: label only
             }
             for name, labels in spec["options"].items()
         ],
@@ -169,11 +183,13 @@ class FakeShopifyStore:
         self.carts[cart_id] = cart
         return {"cart": cart}
 
-    def _accept(self, lines: list[dict[str, Any]]) -> tuple[list[dict], list[dict]]:
+    def _accept(self, cart: dict[str, Any]) -> tuple[list[dict], list[dict]]:
         kept, messages = [], []
-        for line in lines:
+        ships_here = (cart.get("context") or {}).get("address_country") in MARKET
+        for line in cart["line_items"]:
             vid = line["item"]["id"]
-            if _VARIANTS[vid][3] and vid not in _SOLD_OUT_AT_CART:
+            sellable = ships_here or vid in _NO_SHIPPING
+            if _VARIANTS[vid][3] and vid not in _SOLD_OUT_AT_CART and sellable:
                 kept.append(line)
             else:  # the live store drops the line and says so only with a warning
                 title = _PRODUCTS[_VARIANTS[vid][0]]["title"]
@@ -188,12 +204,12 @@ class FakeShopifyStore:
         return kept, messages
 
     def _create_cart(self, body, args, request):
-        kept, messages = self._accept(args["cart"]["line_items"])
+        kept, messages = self._accept(args["cart"])
         cart_id = f"gid://shopify/Cart/{uuid.uuid4().hex[:8]}"
         return self._result(body, self._render_cart(cart_id, kept, messages))
 
     def _update_cart(self, body, args, request):
-        kept, messages = self._accept(args["cart"]["line_items"])
+        kept, messages = self._accept(args["cart"])
         return self._result(body, self._render_cart(args["id"], kept, messages))
 
     def _get_cart(self, body, args, request):
@@ -242,13 +258,8 @@ class FakeShopifyStore:
 
     def _search_shop_policies_and_faqs(self, body, args, request):
         # Live shape: a JSON list of question/answer pairs as text, no structuredContent.
-        faqs = [
-            {
-                "question": "What is your return policy?",
-                "answer": "Unused items can be returned within 30 days of delivery for a full refund.",
-            },
-            {"question": "Do you accept store credit?", "answer": "The store accepts store credit."},
-        ]
+        query = args["query"].lower()
+        faqs = [{"question": q, "answer": a} for keys, q, a in _FAQS if any(k in query for k in keys)]
         content = [{"type": "text", "mimeType": "application/json", "text": json.dumps(faqs)}]
         return httpx.Response(
             200,
