@@ -4,8 +4,8 @@ services:
   - type: web
     name: iknowledge-shopping-agent
     runtime: python
-    plan: starter # always on; the free plan sleeps and the first reply after idle is slow
-    branch: claude/commerce-agents-study-rdoe5a
+    plan: free # sleeps after ~15 min idle (first reply then takes ~30-60 s); `starter` stays on
+    branch: claude/festive-sagan-q8rglv
     buildCommand: ./scripts/render_build.sh
     startCommand: uvicorn my_store.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz

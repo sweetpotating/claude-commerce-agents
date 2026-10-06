@@ -7,7 +7,10 @@ adds a chat bubble. About 15 minutes, all in the browser.
 
 1. Sign up at <https://render.com> with your GitHub account.
 2. **New > Blueprint**, pick the `claude-commerce-agents` repo. Render reads `render.yaml`
-   and proposes one web service, `iknowledge-shopping-agent` (Starter plan, about $7/month).
+   and proposes one web service, `iknowledge-shopping-agent`, on the Free plan (no card).
+   It sleeps after about 15 minutes without visitors; the next reply then takes 30-60
+   seconds and open chats are cleared. To keep it always on, change `plan: free` to
+   `plan: starter` in `render.yaml` (about $7/month).
 3. It asks for the secret values. Paste them there, never into the repo or a chat:
    - `ANTHROPIC_API_KEY`: from <https://console.anthropic.com> > API keys.
    - `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`: the same pair you set for testing. Without
@@ -17,7 +20,7 @@ adds a chat bubble. About 15 minutes, all in the browser.
 5. Set a spending limit at console.anthropic.com > Billing as a second guard.
 
 Render deploys again on every push to the branch in `render.yaml`
-(`claude/commerce-agents-study-rdoe5a`). Change `branch:` there after you merge to `main`.
+(`claude/festive-sagan-q8rglv`). Change `branch:` there after you merge to `main`.
 
 ## 2. Add the chat bubble to your store
 
