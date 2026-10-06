@@ -29,6 +29,9 @@
     padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
   }
   header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .head-actions { display: flex; gap: 8px; align-items: center; }
+  #close-btn { border: 0; background: transparent; color: var(--ink); font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px; }
+  #close-btn[hidden] { display: none; }
   #cart-btn {
     border: 1px solid var(--line); background: transparent; color: var(--ink);
     border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit;
@@ -87,7 +90,10 @@
 <body>
 <header>
   <h1>Shopping Assistant</h1>
-  <button id="cart-btn" type="button">Cart (0)</button>
+  <div class="head-actions">
+    <button id="cart-btn" type="button">Cart (0)</button>
+    <button id="close-btn" type="button" aria-label="Close" hidden>&times;</button>
+  </div>
 </header>
 <main id="scroller">
   <div id="cart-drawer" hidden></div>
@@ -108,6 +114,12 @@
   const send = document.getElementById("send");
   const cartBtn = document.getElementById("cart-btn");
   const drawer = document.getElementById("cart-drawer");
+  const embedded = new URLSearchParams(location.search).has("embed");
+  const SESSION_KEY = "shopping-assistant-session";
+  const saved = {
+    get: () => { try { return sessionStorage.getItem(SESSION_KEY); } catch { return null; } },
+    set: (v) => { try { v ? sessionStorage.setItem(SESSION_KEY, v) : sessionStorage.removeItem(SESSION_KEY); } catch {} },
+  };
   let sessionId = null;
   let busy = false;
   let cart = { items: [], item_count: 0, subtotal: 0, currency: "" };
@@ -136,9 +148,15 @@
   async function ensureSession() {
     if (sessionId) return sessionId;
     const r = await fetch("/api/session", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
-    if (!r.ok) throw new Error(`session ${r.status}`);
+    if (!r.ok) throw new Error(await problem(r));
     sessionId = (await r.json()).session_id;
+    saved.set(sessionId);
     return sessionId;
+  }
+
+  async function problem(r) {
+    try { const j = await r.json(); if (j && typeof j.detail === "string") return j.detail; } catch {}
+    return `Request failed (${r.status})`;
   }
 
   function renderCart() {
@@ -201,7 +219,8 @@
     const hs = el("div", "handoffs");
     (p.handoffs || []).forEach((h) => {
       const a = el("a", "primary", h.label || "Check out");
-      a.href = h.url; a.target = "_blank"; a.rel = "noopener";
+      a.href = h.url; a.rel = "noopener";
+      a.target = embedded ? "_top" : "_blank"; // in the store, check out in the same tab
       hs.appendChild(a);
     });
     box.appendChild(hs);
@@ -247,8 +266,8 @@
         headers: { "content-type": "application/json", "x-session-id": sessionId },
         body: JSON.stringify({ message: text }),
       });
-      if (r.status === 401) { sessionId = null; throw new Error("Session expired. Send your message again."); }
-      if (!r.ok || !r.body) throw new Error(`Request failed (${r.status})`);
+      if (r.status === 401) { sessionId = null; saved.set(null); throw new Error("Session expired. Send your message again."); }
+      if (!r.ok || !r.body) throw new Error(await problem(r));
       const reader = r.body.getReader();
       const dec = new TextDecoder();
       let pending = "";
@@ -304,9 +323,34 @@
     renderCart();
     if (!drawer.hidden) scroller.scrollTop = 0;
   });
+  if (embedded) {
+    const close = document.getElementById("close-btn");
+    close.hidden = false;
+    close.addEventListener("click", () => parent.postMessage({ type: "shopping-assistant:close" }, "*"));
+  }
+
+  // Picks the chat back up after the shopper moves to another page of the store.
+  async function resume() {
+    const id = saved.get();
+    if (!id) return false;
+    try {
+      const h = await fetch("/api/history", { headers: { "x-session-id": id } });
+      if (!h.ok) { saved.set(null); return false; }
+      sessionId = id;
+      const { turns } = await h.json();
+      turns.forEach((t) => { const n = el("div", `msg ${t.role === "user" ? "me" : "bot"}`); setText(n, t.text); add(n); });
+      const c = await fetch("/api/cart", { headers: { "x-session-id": id } });
+      if (c.ok) cart = await c.json();
+      return turns.length > 0;
+    } catch { return false; }
+  }
+
   renderCart();
-  add(el("div", "msg bot", "Hi! What are you looking for today?"));
-  input.focus();
+  resume().then((resumed) => {
+    renderCart();
+    if (!resumed) add(el("div", "msg bot", "Hi! What are you looking for today?"));
+    if (!embedded) input.focus();
+  });
 })();
 </script>
 </body>

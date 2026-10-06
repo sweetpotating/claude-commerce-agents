@@ -9,8 +9,9 @@
          -H 'content-type: application/json' -d '{"message": "a 2-person tent under $250"}'
 
 This is the shape of ``vendor/commerce-agents/examples/demo_common/storefront.py`` cut down
-to the essentials. Before production add: real authentication at session start, a durable
-session store (Redis/DB), rate limits, and signature checks on the payment webhook
+to the essentials. ``guards.py`` adds rate limits and a daily ceiling for a public launch
+(DEPLOY.md). Still owed before scale: a durable session store (Redis/DB) so chats survive a
+restart, and signature checks on the payment webhook
 (``vendor/commerce-agents/docs/safety.md``, "What a deployment owns").
 """
 
@@ -18,6 +19,7 @@ from __future__ import annotations
 
 import os
 import secrets
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -37,6 +39,7 @@ from shopping_agent import (
 from shopping_agent.serialization import cart_payload
 from shopping_agent_runtime import ShoppingAgent
 
+from . import guards
 from .backend import MyStoreBackend
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
 
@@ -75,10 +78,13 @@ class Session:
     messages: list[dict[str, Any]] = field(default_factory=list)
     state: ShoppingSessionState = field(default_factory=ShoppingSessionState)
     pending_app_events: list[str] = field(default_factory=list)
+    turns: int = 0
+    last_seen: float = field(default_factory=time.monotonic)
 
 
 SESSIONS: dict[str, Session] = {}  # TODO(live): Redis or your app's session store
-app = FastAPI(title="Trailhead Supply shopping agent")
+app = FastAPI(title="Shopping agent")
+STATIC = Path(__file__).parent / "static"
 
 
 class StartSession(BaseModel):
@@ -93,7 +99,21 @@ class ChatRequest(BaseModel):
 def current(session_id: str | None) -> Session:
     if not session_id or session_id not in SESSIONS:
         raise HTTPException(401, "Unknown session")
-    return SESSIONS[session_id]
+    s = SESSIONS[session_id]
+    s.last_seen = time.monotonic()
+    return s
+
+
+def drop_idle_sessions() -> None:
+    cutoff = time.monotonic() - guards.SESSION_IDLE_SECONDS
+    for sid in [sid for sid, s in SESSIONS.items() if s.last_seen < cutoff]:
+        del SESSIONS[sid]
+
+
+def _text(block: Any) -> str:
+    kind = block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
+    text = block.get("text") if isinstance(block, dict) else getattr(block, "text", None)
+    return text if kind == "text" and isinstance(text, str) else ""
 
 
 def context(s: Session, page: PageContext | None = None) -> ShoppingSessionContext:
@@ -104,12 +124,25 @@ def context(s: Session, page: PageContext | None = None) -> ShoppingSessionConte
 
 @app.get("/", include_in_schema=False)
 async def chat_page() -> FileResponse:
-    """A minimal browser chat over the API below, for trying the agent locally."""
-    return FileResponse(Path(__file__).parent / "static" / "chat.html")
+    """The browser chat over the API below; the storefront widget frames it (?embed=1)."""
+    return FileResponse(STATIC / "chat.html")
+
+
+@app.get("/widget.js", include_in_schema=False)
+async def widget() -> FileResponse:
+    """The chat bubble a Shopify theme loads with one script tag (DEPLOY.md)."""
+    return FileResponse(STATIC / "widget.js", media_type="text/javascript")
+
+
+@app.get("/healthz", include_in_schema=False)
+async def healthz() -> dict:
+    return {"ok": True}
 
 
 @app.post("/api/session")
-async def start_session(body: StartSession) -> dict:
+async def start_session(body: StartSession, request: Request) -> dict:
+    guards.session_limiter.check(guards.client_ip(request), "Too many new chats. Please wait a bit.")
+    drop_idle_sessions()
     s = Session(session_id=secrets.token_urlsafe(24), user_id=body.user_id)
     SESSIONS[s.session_id] = s
     return {"session_id": s.session_id}
@@ -118,9 +151,14 @@ async def start_session(body: StartSession) -> dict:
 @app.post("/api/chat")
 async def chat(body: ChatRequest, request: Request, x_session_id: str | None = Header(default=None)):
     s = current(x_session_id)
-    if isinstance(backend, ShopifyUCPBackend) and request.client:
-        # TODO(live): behind a proxy, take the client IP from X-Forwarded-For instead.
-        backend.set_buyer_ip(s.session_id, request.client.host)
+    ip = guards.client_ip(request)
+    guards.chat_limiter.check(ip, "You're sending messages quickly. Please wait a moment.")
+    if s.turns >= guards.TURNS_PER_SESSION:
+        raise HTTPException(429, "This chat has reached its length limit. Start a new chat to continue.")
+    guards.daily_budget.spend()
+    s.turns += 1
+    if isinstance(backend, ShopifyUCPBackend):
+        backend.set_buyer_ip(s.session_id, ip)
     if s.pending_app_events:  # things that happened outside the chat (e.g. payment)
         note = "[App events since your last reply: " + " ".join(s.pending_app_events) + "]"
         s.pending_app_events.clear()
@@ -141,6 +179,20 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         await agent.update_memory(s.messages, ctx)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.get("/api/history")
+async def history(x_session_id: str | None = Header(default=None)) -> dict:
+    """The chat's text turns, so the widget can redraw after the shopper changes page."""
+    s = current(x_session_id)
+    turns = []
+    for m in s.messages:
+        content = m.get("content")
+        blocks = [{"type": "text", "text": content}] if isinstance(content, str) else content or []
+        text = "\n\n".join(t for t in map(_text, blocks) if t and not t.startswith("[App events"))
+        if text and m.get("role") in ("user", "assistant"):
+            turns.append({"role": m["role"], "text": text})
+    return {"turns": turns}
 
 
 @app.get("/api/cart")

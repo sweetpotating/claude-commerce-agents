@@ -1,0 +1,30 @@
+# Render Blueprint: New > Blueprint, pick this repo. Secrets (sync: false) are asked for
+# once in the Render dashboard; they never live in the repo. Steps: DEPLOY.md.
+services:
+  - type: web
+    name: iknowledge-shopping-agent
+    runtime: python
+    plan: starter # always on; the free plan sleeps and the first reply after idle is slow
+    branch: claude/commerce-agents-study-rdoe5a
+    buildCommand: ./scripts/render_build.sh
+    startCommand: uvicorn my_store.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: STORE_BACKEND
+        value: shopify
+      - key: TRUST_PROXY # Render's proxy appends the shopper's IP to X-Forwarded-For
+        value: "1"
+      - key: SHOPIFY_STORE_DOMAIN
+        value: iknowledge-dev.myshopify.com
+      - key: STORE_BRAND_NAME
+        value: iKnowledge
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SHOPIFY_CLIENT_ID
+        sync: false
+      - key: SHOPIFY_CLIENT_SECRET
+        sync: false
+      - key: TURNS_PER_DAY # messages per day across all shoppers; caps the Anthropic bill
+        value: "1500"
