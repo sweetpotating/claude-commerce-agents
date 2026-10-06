@@ -659,7 +659,11 @@
   renderCart();
   resume().then((resumed) => {
     renderCart();
-    if (!resumed) add(el("div", "msg bot", "Hi! What are you looking for today?"));
+    if (!resumed) {
+      add(el("div", "msg bot", "Hi! What are you looking for today? Tap one to see picks right away."));
+      // One tap to products: each starter goes straight to recommendations.
+      add(suggestions({ suggestions: ["Show me your best picks", "Plan a 2-day trip", "Compare your plans", "Gift ideas under $50"] }));
+    }
     if (!embedded) input.focus();
   });
 })();

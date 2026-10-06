@@ -49,7 +49,9 @@ from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
 if not os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("STORE_AGENT_ANTHROPIC_API_KEY"):
     os.environ["ANTHROPIC_API_KEY"] = os.environ["STORE_AGENT_ANTHROPIC_API_KEY"]
 
-SKILLS_DIR = Path(__file__).resolve().parents[1] / "vendor/commerce-agents/shopping-agent/skills"
+# The reference skills with a products-first rule: no intake questions or product-less outlines
+# before the first recommendation (my_store/skills/README.md lists the changes).
+SKILLS_DIR = Path(__file__).resolve().parent / "skills"
 
 # STORE_BACKEND=shopify (with SHOPIFY_STORE_DOMAIN set) runs on a real Shopify store;
 # otherwise the sample catalog.json store.

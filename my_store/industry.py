@@ -77,6 +77,9 @@ SEARCH_NOTES = (
 
 # Every recommendation should end on something the shopper can open and buy.
 DISCOVERY_NOTES = (
+    "Show products in your first reply to any shopping request, however vague: do not ask "
+    "a question before showing options. Assume the likeliest details, say the assumption "
+    "in one short line, and put the alternatives in the chips as one-tap refinements. "
     "Recommendations lead to products. Before you present a plan, itinerary, guide, or "
     "comparison, search the catalog for each step or need it covers and attach the "
     "matching product_ids; run several searches when steps differ. When a step is "

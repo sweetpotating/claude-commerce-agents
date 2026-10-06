@@ -104,3 +104,18 @@ async def test_every_product_links_to_the_storefront(executor):
 def test_discovery_rules_reach_the_prompt():
     notes = shopify_agent_config(**industry_config_overrides()).domain_search_notes
     assert "Recommendations lead to products" in notes and "search the catalog for each step" in notes
+
+
+def test_the_agent_recommends_before_asking():
+    from commerce_common.skills import SkillRegistry
+
+    from my_store.app import SKILLS_DIR
+
+    assert SKILLS_DIR.name == "skills" and "vendor" not in SKILLS_DIR.parts
+    text = " ".join(
+        (SKILLS_DIR / n / "SKILL.md").read_text() for n in SkillRegistry.from_dir(SKILLS_DIR).names
+    )
+    assert "spend one turn on two or three short questions" not in text  # the intake turn is gone
+    assert "Never send a plan without products" in text
+    notes = shopify_agent_config(**industry_config_overrides()).domain_search_notes
+    assert "do not ask a question before showing options" in notes
