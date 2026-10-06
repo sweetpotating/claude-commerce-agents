@@ -127,6 +127,34 @@ stayed well under 10s.
 - **After the fixes: 9 of 9 chip taps showed products with real ids.** That covers every
   non-"Add" chip from the mum and Singapore openers, plus the earlier failures.
 
+#### i15: every key flow with no API credit (scripted model, live store), 2026-10-06
+
+`NO_MODEL=1 scripts/loop.sh`, see `e2e/README.md`. Lint, 89 unit tests, live smoke,
+13 API flows (47 scripted model calls, 0 errors), and a Chromium walk at 390x844:
+**19/19**. The walk covered:
+
+- discovery chip to cards, add from a card, choose size M
+- the in-chat product page
+- Japan vs Malaysia comparison with a facts table (Price, Duration, Includes, Delivery,
+  Free cancellation, Date changes)
+- the plan table and an itinerary
+- the 30-day return FAQ and a mailto handoff
+- the Shopify checkout link
+- a dropped connection: a plain message, and Try again resends
+- model outage: store products, add to cart and the FAQ answer still work
+- no raw JSON, no sideways scroll, no page errors
+
+Screenshots are in `docs/uat/e2e/`.
+
+Fixed along the way:
+
+- A 25-result search came to about 13k characters because of the store's repeated
+  description template ("Hand-picked…", "Product details…"). That is over the runtime's
+  12k fence, so the model saw truncated JSON. Summaries now stop at the template, and a
+  search is about 9k.
+- The comparison row was a horizontal scroller with one card visible at phone width. It is
+  now a two-column grid, and only 4 or more entries scroll.
+
 ## Findings and fixes
 
 1. **Every physical product was "sold out" at the cart (fixed by configuration).**

@@ -88,7 +88,13 @@
   .section + .section { margin-top: 12px; }
   .section h3 { font-size: 15px; margin: 0; }
   .sources { color: var(--muted); font-size: 12px; margin-top: 10px; }
-  .compare { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+  /* A comparison shows its products side by side, never half off-screen: two (or three on
+     wider screens) equal columns; four fall back to a scrolling row. */
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding-bottom: 6px; }
+  .compare .product { width: auto; min-width: 0; flex: none; }
+  .compare.many { display: flex; overflow-x: auto; }
+  .compare.many .product { flex: 0 0 220px; }
+  .msg a[href^="mailto:"] { color: var(--accent); font-weight: 600; text-underline-offset: 2px; }
   .compare .product.pick { border-color: var(--accent); }
   .badge { align-self: flex-start; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
   .pc { margin: 0; padding-left: 18px; font-size: 13px; }
@@ -533,7 +539,7 @@
     const wrap = el("div");
     if (p.title) wrap.appendChild(el("div", "card-title", p.title));
     if (p.dimensions && p.dimensions.length) wrap.appendChild(el("p", "intro", "Comparing " + p.dimensions.join(", ")));
-    const row = el("div", "compare");
+    const row = el("div", (p.entries || []).length > 3 ? "compare many" : "compare");
     (p.entries || []).forEach((e) => {
       if (!e.product) return;
       const card = productCard(e.product, e.best_for ? `Best for ${e.best_for}` : null);

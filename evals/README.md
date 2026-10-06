@@ -13,7 +13,8 @@ python -m evals.runner                         # all cases, 1 trial (~10 min, ~$
 python -m evals.runner --tags conversion -n 3  # one slice, 3 trials each
 python -m evals.runner --ids cart-005 -n 5     # re-run a failure until you trust the fix
 python -m evals.audit                          # check the judge before trusting it
-scripts/loop.sh                                # lint -> unit tests -> live smoke -> evals
+scripts/loop.sh                                # lint -> unit tests -> live smoke -> e2e -> evals
+NO_MODEL=1 scripts/loop.sh                     # all but the evals: no API call (e2e/README.md)
 ```
 
 Results go to `evals/results/<stamp>/` (`results.jsonl`, `traces/` with every turn's tool

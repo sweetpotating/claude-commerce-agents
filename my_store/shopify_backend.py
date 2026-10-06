@@ -192,6 +192,24 @@ def _minor(amount: float) -> int:
     return int(round(amount * 100))
 
 
+# Where a store's description template starts: what follows is the same for every product
+# ("Hand-picked for quality...", "Product details ..."), and the sentence before it names
+# the brand ("Pick of the shelf with iKnowledge."). A search result keeps what comes first.
+_TEMPLATE = re.compile(r"\s*(?:Hand-picked\b|Product details\b)", re.IGNORECASE)
+_BRAND_LINE = re.compile(r"\s*\b[A-Z][\w' ]{0,40} with [\w.-]+\.\s*$")
+
+
+def _summary(text: str | None, max_chars: int = 200) -> str | None:
+    """The product's own opening words, without the store's per-product template: half of
+    a 25-result search was template text, which pushed the result past the runtime's size
+    cap and cut it mid-record (the model then saw truncated JSON)."""
+    if not text:
+        return None
+    head = _TEMPLATE.split(text, maxsplit=1)[0]
+    head = _BRAND_LINE.sub("", head).strip() or text
+    return head[:max_chars].rstrip() or None
+
+
 def _text(description: Any) -> str | None:
     if isinstance(description, dict):
         description = description.get("plain") or description.get("html")
@@ -410,7 +428,7 @@ class ShopifyUCPBackend(StorefrontBackend):
             currency=low.get("currency", "USD") if isinstance(low, dict) else "USD",
             image_url=media[0].get("url") if media and isinstance(media[0], dict) else None,
             in_stock=bool(available) if variants else True,
-            short_description=(_text(raw.get("description")) or "")[:300] or None,
+            short_description=_summary(_text(raw.get("description"))),
             options=options,
             attributes={"product_url": self._product_url(raw), **self._facts(raw, low)},
         )

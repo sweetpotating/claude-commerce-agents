@@ -76,3 +76,19 @@ async def test_a_country_search_finds_city_titled_tours():
     found = await backend.search_products(session, "Malaysia")
     assert [p.title for p in found] == ["Kuala Lumpur City Tour"]
     assert found[0].attributes["Duration"] == "Half day" and found[0].attributes["Includes"] == "lunch"
+
+
+def test_search_summaries_drop_the_stores_description_template():
+    # Live: half of a 25-result search was this template, which pushed the result past the
+    # runtime's size cap and cut it mid-record (the model saw truncated JSON).
+    from my_store.shopify_backend import _summary
+
+    text = (
+        "Half-day guided city tour. Experience with iKnowledge. Hand-picked for quality and value, "
+        "backed by our worldwide customer care team. Product details Instant e-voucher delivered by email"
+    )
+    assert _summary(text) == "Half-day guided city tour."
+    assert _summary("Small changes. By James Clear. Pick of the shelf with iKnowledge. Hand-picked") == (
+        "Small changes. By James Clear."
+    )
+    assert _summary("Plain description, no template.") == "Plain description, no template."
