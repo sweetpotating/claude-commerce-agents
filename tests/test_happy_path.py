@@ -69,3 +69,19 @@ def test_product_page_opens_inside_the_chat(client):
     assert "image_urls" not in page and isinstance(page["images"], list)
     # The page counts as a lookup: a size picked on it goes straight into the cart.
     assert client.post("/api/cart/add", json={"product_id": "TS-101"}, headers=h).status_code == 200
+
+
+def test_a_chat_opened_on_a_product_page_can_add_that_product_straight_away(client):
+    # The bubble opened on the tent's page: the opening card shows it, and adding it needs
+    # no search first (the page's product counts as seen).
+    sid, h = start(client)
+    page = {"page_type": "product", "product_id": "TS-200"}
+    opened = client.post("/api/page", json=page, headers=h).json()
+    assert opened["product"]["title"] == "Summit 2P Backpacking Tent"
+    added = client.post("/api/cart/add", json={"product_id": "TS-200"}, headers=h)
+    assert added.status_code == 200 and added.json()["item_count"] == 1
+    # Not a product page, or a product the store doesn't have: no card, no error.
+    assert client.post("/api/page", json={"page_type": "home"}, headers=h).json() == {"product": None}
+    assert client.post(
+        "/api/page", json={"page_type": "product", "product_id": "NOPE-1"}, headers=h
+    ).json() == {"product": None}

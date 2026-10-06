@@ -49,8 +49,22 @@
   bubble.setAttribute("aria-label", "Open shopping assistant");
   bubble.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 
+  // The page the shopper is on, so the chat can talk about "this" product. Shopify themes
+  // publish it in ShopifyAnalytics.meta on every storefront page.
+  function pageParams() {
+    const meta = (window.ShopifyAnalytics && window.ShopifyAnalytics.meta) || window.meta || {};
+    const kind = ((meta.page && meta.page.pageType) || "").toLowerCase();
+    const type = { product: "product", searchresults: "search", search: "search", cart: "cart", home: "home" }[kind] || (kind ? "other" : "");
+    const p = new URLSearchParams({ embed: "1" });
+    if (type) p.set("page_type", type);
+    if (type === "product" && meta.product && meta.product.id) p.set("product_id", `gid://shopify/Product/${meta.product.id}`);
+    const q = new URLSearchParams(location.search).get("q");
+    if (type === "search" && q) p.set("q", q.slice(0, 120));
+    return p.toString();
+  }
+
   function setOpen(open) {
-    if (open && !loaded) { frame.src = `${origin}/?embed=1`; loaded = true; }
+    if (open && !loaded) { frame.src = `${origin}/?${pageParams()}`; loaded = true; }
     frame.classList.toggle("open", open);
     bubble.setAttribute("aria-expanded", String(open));
     store.set(open);

@@ -187,6 +187,17 @@
   let sessionId = null;
   // Shown on the greeting and after a dropped reply; each one starts a product search.
   const STARTER_CHIPS = ["Show me your best picks", "Plan a 2-day trip", "Compare your plans", "Gift ideas"];
+  // The storefront page the bubble was opened on (widget.js), sent with every message.
+  const PAGE = (() => {
+    const q = new URLSearchParams(location.search);
+    const type = q.get("page_type");
+    if (!["home", "search", "product", "cart", "other"].includes(type)) return null;
+    const page = { page_type: type };
+    if (type === "product" && /^gid:\/\/shopify\/Product\/\d+$/.test(q.get("product_id") || "")) page.product_id = q.get("product_id");
+    if (type === "search" && q.get("q")) page.query = q.get("q").slice(0, 120);
+    return page;
+  })();
+  const PRODUCT_PAGE_CHIPS = ["Tell me about this", "Which option suits me?", "Show similar items", "Is it a good gift?"];
   let busy = false;
   let cart = { items: [], item_count: 0, subtotal: 0, currency: "" };
 
@@ -339,6 +350,7 @@
   }
 
   async function openProduct(product) {
+    track("product_opened", { product_id: product.product_id });
     sheet.replaceChildren();
     const bar = el("div", "sheet-bar");
     const back = el("button", "sheet-back", "← Back to chat"); back.type = "button";
@@ -614,6 +626,13 @@
     return box;
   }
 
+  // Funnel steps only the browser sees (funnel.py); a beacon survives leaving the page.
+  const track = (name, extra) => {
+    if (!sessionId) return;
+    const body = JSON.stringify({ session_id: sessionId, name, ...(extra || {}) });
+    try { navigator.sendBeacon("/api/event", new Blob([body], { type: "application/json" })); } catch {}
+  };
+
   function checkoutCard(p) {
     const box = p.cart ? cartPanel(p.cart, "Checkout") : el("div", "panel");
     if (p.note) box.appendChild(el("div", "note", p.note));
@@ -622,6 +641,7 @@
       const a = el("a", "primary", h.label || "Check out");
       a.href = h.url; a.rel = "noopener";
       a.target = embedded ? "_top" : "_blank"; // in the store, check out in the same tab
+      a.addEventListener("click", () => track("checkout_clicked"));
       hs.appendChild(a);
     });
     box.appendChild(hs);
@@ -673,7 +693,7 @@
       const r = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json", "x-session-id": sessionId },
-        body: JSON.stringify({ message: text, source: source || null }),
+        body: JSON.stringify({ message: text, source: source || null, page: PAGE }),
       });
       if (r.status === 401) { sessionId = null; saved.set(null); throw new Error("Session expired. Send your message again."); }
       if (!r.ok || !r.body) throw new Error(await problem(r));
@@ -736,6 +756,7 @@
     e.preventDefault();
     const t = input.value; input.value = ""; ask(t);
   });
+  checkoutGo.addEventListener("click", () => track("checkout_clicked"));
   checkoutBtn.addEventListener("click", async () => {
     checkoutBtn.disabled = true; checkoutMsg.hidden = true;
     try {
@@ -786,14 +807,29 @@
     } catch { return false; }
   }
 
+  // On a product page the chat opens on that product, with its own Add to cart; elsewhere,
+  // starter chips that go straight to products.
+  async function greet() {
+    if (PAGE && PAGE.product_id) {
+      try {
+        await ensureSession();
+        const d = await api("/api/page", PAGE);
+        if (d.product) {
+          add(el("div", "msg bot", `Hi! Questions about the ${d.product.title}? I can check options, compare it, or add it to your cart.`));
+          add(productsCard({ items: [{ product: d.product }] }));
+          add(suggestions({ suggestions: PRODUCT_PAGE_CHIPS }));
+          return;
+        }
+      } catch {}
+    }
+    add(el("div", "msg bot", "Hi! What are you looking for today? Tap one to see picks right away."));
+    add(suggestions({ suggestions: STARTER_CHIPS }));
+  }
+
   renderCart();
   resume().then((resumed) => {
     renderCart();
-    if (!resumed) {
-      add(el("div", "msg bot", "Hi! What are you looking for today? Tap one to see picks right away."));
-      // One tap to products: each starter goes straight to recommendations.
-      add(suggestions({ suggestions: STARTER_CHIPS }));
-    }
+    if (!resumed) greet();
     if (!embedded) input.focus();
   });
 })();

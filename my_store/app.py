@@ -44,6 +44,7 @@ from shopping_agent_runtime import ShoppingAgent
 from . import discovery, guards
 from .backend import MyStoreBackend
 from .executor import StoreToolExecutor
+from .funnel import CLIENT_EVENTS, PRODUCT_COMPONENTS, funnel
 from .industry import industry_config_overrides, industry_extensions
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
 
@@ -185,6 +186,35 @@ async def start_session(body: StartSession, request: Request) -> dict:
     return {"session_id": s.session_id}
 
 
+async def remember_page_product(s: Session, page: PageContext | None) -> Any:
+    """The product on the shopper's current page, looked up and counted as seen, so "add
+    this to my cart" or "does it come in M?" works without a search first. None when the
+    page is not a product page or the product is not in this store."""
+    if page is None or not page.product_id:
+        return None
+    known = s.state.seen_products.get(page.product_id)
+    if known is not None:
+        return known
+    try:
+        details = await backend.get_product_details(context(s, page), page.product_id)
+    except Exception:
+        logger.warning("page product lookup failed", exc_info=True)
+        return None
+    if details is not None:
+        s.state.remember_products([details, *details.variants])
+    return details
+
+
+@app.post("/api/page")
+async def page_opened(page: PageContext, x_session_id: str | None = Header(default=None)) -> dict:
+    """The chat opened on a storefront page: the product there, for the opening card."""
+    s = current(x_session_id)
+    product = await remember_page_product(s, page)
+    if product is not None:
+        funnel.record(s.session_id, "products_shown", source="page")
+    return {"product": product.model_dump(exclude_none=True) if product is not None else None}
+
+
 @app.post("/api/chat")
 async def chat(body: ChatRequest, request: Request, x_session_id: str | None = Header(default=None)):
     s = current(x_session_id)
@@ -196,6 +226,8 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     guards.ip_daily.check(ip, "You've reached today's chat limit. Please come back tomorrow.")
     guards.daily_budget.spend()
     s.turns += 1
+    if s.turns == 1:
+        funnel.record(s.session_id, "chat_started", page=body.page.page_type if body.page else None)
     if isinstance(backend, ShopifyUCPBackend):
         backend.set_buyer_ip(s.session_id, ip)
     if s.pending_app_events:  # things that happened outside the chat (e.g. payment)
@@ -206,6 +238,7 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     else:
         s.messages.append({"role": "user", "content": body.message})
     ctx = context(s, body.page)
+    await remember_page_product(s, body.page)
     chip = body.source == "chip"
     if chip:
         discovery.chip_tapped(s.state)
@@ -223,6 +256,15 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
             async for event in agent.stream_turn(s.messages, ctx, s.state):
                 if event.type == "turn_complete":
                     guards.token_budget.charge(event.data.get("usage") or {})
+                if event.type == "tool_result" and event.data.get("tool") == "add_to_cart":
+                    if not event.data.get("is_error"):
+                        funnel.record(s.session_id, "added_to_cart", source="chat")
+                if event.type == "ui":
+                    shown = event.data.get("component")
+                    if shown in PRODUCT_COMPONENTS:
+                        funnel.record(s.session_id, "products_shown", source=shown)
+                    elif shown == "checkout":
+                        funnel.record(s.session_id, "checkout_shown", source="chat")
                 if event.type == "ui":
                     component, payload = event.data.get("component"), event.data.get("payload") or {}
                     has_chips |= component == "suggestions"
@@ -401,6 +443,7 @@ async def cart_add(body: CartAdd, x_session_id: str | None = Header(default=None
     s.pending_app_events.append(
         f"Customer tapped Add to cart on {title} ({body.product_id}), quantity {body.quantity}."
     )
+    funnel.record(s.session_id, "added_to_cart", source="card")
     return cart_payload(await backend.get_cart(context(s)))
 
 
@@ -413,7 +456,36 @@ async def checkout(x_session_id: str | None = Header(default=None)) -> dict:
     if out.is_error or out.blocked or card is None:
         raise HTTPException(400, _first_sentence(out.result_text))
     s.pending_app_events.append("Customer tapped Checkout; the checkout link was shown.")
+    funnel.record(s.session_id, "checkout_shown", source="bar")
     return card
+
+
+class ClientEvent(BaseModel):
+    session_id: str = Field(max_length=64)
+    name: str = Field(max_length=32)
+    product_id: str | None = Field(default=None, max_length=200)
+
+
+event_limiter = guards.RateLimiter(60, 60)
+
+
+@app.post("/api/event", status_code=204)
+async def client_event(body: ClientEvent, request: Request) -> None:
+    """A funnel step only the browser sees (a checkout link tapped). Sent as a beacon, so
+    the session id comes in the body; unknown sessions and names are ignored."""
+    event_limiter.check(guards.client_ip(request), "Too many events.")
+    if body.name in CLIENT_EVENTS and body.session_id in SESSIONS:
+        funnel.record(body.session_id, body.name, product_id=body.product_id)
+
+
+@app.get("/api/metrics", include_in_schema=False)
+async def metrics(token: str = "", x_metrics_token: str | None = Header(default=None)) -> dict:
+    """Funnel counts and rates. Needs METRICS_TOKEN (query ?token= or X-Metrics-Token);
+    without one set, the endpoint does not exist."""
+    expected = os.environ.get("METRICS_TOKEN")
+    if not expected or not secrets.compare_digest(x_metrics_token or token, expected):
+        raise HTTPException(404, "Not Found")
+    return {**funnel.report(), "token_budget_used": round(guards.token_budget.used)}
 
 
 @app.post("/webhooks/checkout-complete/{token}")
