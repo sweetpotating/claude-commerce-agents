@@ -69,6 +69,12 @@ def test_a_tapped_chip_always_searches():
     assert forced(text, state) is None
     chip_tapped(state)
     assert forced("Add the SIM to my cart", state) is None
+    # A chip that answers the assistant's question is not a search.
+    for answer in ("Keep the 7-day plan anyway", "Stick with the Starter plan", "Never mind"):
+        chip_tapped(state)
+        assert forced(answer, state) is None, answer
+    chip_tapped(state)
+    assert forced("Show more Tokyo tours", state) == "search_products"
 
 
 def test_fallback_chips_come_from_the_products_shown():

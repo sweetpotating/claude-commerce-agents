@@ -354,3 +354,31 @@ async def test_an_empty_cart_is_in_the_stores_currency():
             return super()._handle(request)
 
     assert (await make_backend(SgdStore()).get_cart(session)).currency == "SGD"
+
+
+async def test_shopify_rate_limits_are_retried_not_shown_to_the_shopper(store, monkeypatch):
+    # Live: four chats at once got 429 on cart writes ("the store did not accept that").
+    real, refusals = store._create_cart, []
+
+    def busy_then_ok(body, args, request):
+        if len(refusals) < 2:
+            refusals.append(1)
+            return httpx.Response(429, headers={"retry-after": "0"}, json={"error": "Too many requests"})
+        return real(body, args, request)
+
+    monkeypatch.setattr(store, "_create_cart", busy_then_ok)
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent"})
+    added = await ex.execute("add_to_cart", {"product_id": TENT})
+    assert not added.is_error and len(refusals) == 2
+
+
+async def test_catalog_reads_are_cached_briefly_and_cart_reads_never(store):
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent"})
+    await ex.execute("search_products", {"query": "tent"})
+    assert [c[0] for c in store.calls].count("search_catalog") == 1
+    await ex.execute("add_to_cart", {"product_id": TENT})
+    await ex.execute("get_cart", {})
+    await ex.execute("get_cart", {})
+    assert [c[0] for c in store.calls].count("get_cart") >= 2

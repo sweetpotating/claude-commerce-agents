@@ -123,9 +123,21 @@ def _skip(text: str) -> bool:
     return bool(_SKIP_START.match(text)) or any(cue in padded for cue in SKIP_CUES)
 
 
+# A tapped chip is a step toward products and always searches, except one that answers the
+# assistant's question or confirms a choice: live, "Keep the 7-day plan anyway" forced a
+# search the model ran with the query "placeholder".
+_ANSWER_CHIP = re.compile(
+    r"^\s*(keep|stick|stay|go with|continue|skip|never ?mind|leave|that'?s fine|fine|"
+    r"i'?ll (take|keep|go)|use (this|that|the same))\b",
+    re.IGNORECASE,
+)
+
+
 def _discovery(config: Any, text: str, state: ShoppingSessionState) -> dict[str, Any] | None:
     if id(state) in _chip_turns:
         _chip_turns.discard(id(state))
+        if _ANSWER_CHIP.match(text):
+            return None  # an answer, even with a cue word in it ("keep the 7-day plan")
         if not _skip(text):
             return {}
     return {} if shopping_request(text) else None

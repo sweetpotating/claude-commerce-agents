@@ -29,6 +29,7 @@ Docs: https://shopify.dev/docs/agents
 from __future__ import annotations
 
 import asyncio
+import copy
 import html
 import itertools
 import json
@@ -64,6 +65,13 @@ TOKEN_URL = "https://api.shopify.com/auth/access_token"
 
 # Variant lookups per product family; the reference caps a family's details at ~60 rows.
 MAX_VARIANT_FETCHES = 30
+_RETRIES = 5  # for Shopify's 429 and 502-504 answers: 0.5+1+2+4+8s at most
+# Catalog reads repeat within a chat and across chats (the same search, the same product's
+# variants); a short cache keeps a busy hour under Shopify's rate limit. Cart and checkout
+# calls are never cached.
+_CACHED_TOOLS = {"search_catalog", "get_product", "search_shop_policies_and_faqs"}
+_CACHE_SECONDS = 120
+_CACHE_SIZE = 1000
 _ZERO_DECIMAL = {"JPY", "KRW", "VND", "CLP", "ISK", "UGX", "XAF", "XOF"}
 _UNAVAILABLE_CODES = ("out_of_stock", "insufficient_stock", "unavailable", "not_available", "sold_out")
 _TAG = re.compile(r"<[^>]+>")
@@ -128,6 +136,12 @@ SHOPIFY_PROMPT_NOTES = (
     "search one or two key words (e.g. 'Singapore', 'tour', 'plan'). When a two-word query "
     "finds nothing, search its key word alone ('phone plan' -> 'plan') before switching to a "
     "neighbouring category or concluding the store does not carry something. "
+    "Search results are a relevance cut and can leave out matching items (live, a search for "
+    "'esim' sometimes omits the Thailand eSIM): before saying the store has no product for a "
+    "place, brand, or kind, search that exact name ('Thailand', 'Bangkok'). "
+    "Search matches product names, and an interest is rarely in one: for someone who loves "
+    "music, also search the kinds of product that serve it ('speaker', 'record', 'concert'); "
+    "for reading, 'book', 'lamp', 'bookmark'. Search those in the same round as the interest. "
     "The catalog has no sales, popularity, or rating data: never call a product a "
     "bestseller, most popular, top-rated, or a favourite, in your words or a card's reason; "
     "for such a request show a varied selection as your picks and say they are picks. "
@@ -211,6 +225,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         self._utm_source = utm_source
         self._http = http or httpx.AsyncClient(timeout=20)
         self._ids = itertools.count(1)
+        self._read_cache: dict[str, tuple[float, Any]] = {}
         self._token: tuple[str, float] | None = None
         # TODO(live): keep these in your session store so a restart keeps carts.
         self._cart_ids: dict[str, str] = {}
@@ -260,6 +275,28 @@ class ShopifyUCPBackend(StorefrontBackend):
         auth: bool = False,
         headers: dict[str, str] | None = None,
     ) -> Any:
+        key = None
+        if tool in _CACHED_TOOLS:
+            key = json.dumps([tool, ucp, arguments], sort_keys=True, default=str)
+            hit = self._read_cache.get(key)
+            if hit and hit[0] > time.monotonic():
+                return copy.deepcopy(hit[1])
+        content = await self._call_uncached(tool, arguments, ucp=ucp, auth=auth, headers=headers)
+        if key is not None:
+            if len(self._read_cache) >= _CACHE_SIZE:
+                self._read_cache.clear()
+            self._read_cache[key] = (time.monotonic() + _CACHE_SECONDS, copy.deepcopy(content))
+        return content
+
+    async def _call_uncached(
+        self,
+        tool: str,
+        arguments: dict[str, Any],
+        *,
+        ucp: bool = True,
+        auth: bool = False,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
         if ucp:
             meta = {"ucp-agent": {"profile": self.profile}, **arguments.get("meta", {})}
             arguments = {**arguments, "meta": meta}
@@ -272,9 +309,7 @@ class ShopifyUCPBackend(StorefrontBackend):
             "id": next(self._ids),
             "params": {"name": tool, "arguments": arguments},
         }
-        response = await self._http.post(
-            self.ucp_endpoint if ucp else self.mcp_endpoint, json=body, headers=headers
-        )
+        response = await self._post(self.ucp_endpoint if ucp else self.mcp_endpoint, body, headers)
         response.raise_for_status()
         data = response.json()
         if "error" in data:
@@ -296,6 +331,21 @@ class ShopifyUCPBackend(StorefrontBackend):
             said = [str(m.get("content") or m.get("code")) for m in messages or [] if isinstance(m, dict)]
             raise error(f"{tool}: {'; '.join(said) if said else content}")
         return content
+
+    async def _post(self, url: str, body: dict[str, Any], headers: dict[str, str]) -> httpx.Response:
+        """POST, retried when Shopify is rate-limiting or briefly down (429, 502-504).
+        Seen live: four chats at once got 429 on cart writes, which reached the shopper as
+        "the store did not accept that". Waits Retry-After when given, else 0.5s, 1s, 2s."""
+        for attempt in range(_RETRIES + 1):
+            response = await self._http.post(url, json=body, headers=headers)
+            if response.status_code not in (429, 502, 503, 504) or attempt == _RETRIES:
+                return response
+            try:
+                wait = float(response.headers.get("retry-after", ""))
+            except ValueError:
+                wait = 0.5 * 2**attempt
+            await asyncio.sleep(min(wait, 8.0))
+        return response
 
     def _context(self) -> dict[str, Any]:
         return {"address_country": self._country} if self._country else {}
@@ -679,7 +729,9 @@ class ShopifyUCPBackend(StorefrontBackend):
             # create_checkout takes line items, not a cart id, and refuses a request without
             # the buyer's IP ("Missing required buyer IP header"). The checkout comes back
             # "incomplete" until the buyer gives contact details on Shopify's page.
-            lines = await self._lines(session)
+            # The cart the executor just read, rather than a second read that a busy store
+            # can refuse (live: a 429 there failed checkout).
+            lines = {i.product_id: i.quantity for i in cart.items} or await self._lines(session)
             checkout: dict[str, Any] = {
                 "line_items": [{"quantity": q, "item": {"id": vid}} for vid, q in lines.items()]
             }
