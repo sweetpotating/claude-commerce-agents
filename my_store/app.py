@@ -25,7 +25,7 @@ from typing import Any
 
 from commerce_common.memory import InMemoryMemoryStore
 from commerce_common.streaming import AgentEvent, to_sse
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from shopping_agent import (
@@ -110,8 +110,11 @@ async def start_session(body: StartSession) -> dict:
 
 
 @app.post("/api/chat")
-async def chat(body: ChatRequest, x_session_id: str | None = Header(default=None)):
+async def chat(body: ChatRequest, request: Request, x_session_id: str | None = Header(default=None)):
     s = current(x_session_id)
+    if isinstance(backend, ShopifyUCPBackend) and request.client:
+        # TODO(live): behind a proxy, take the client IP from X-Forwarded-For instead.
+        backend.set_buyer_ip(s.session_id, request.client.host)
     if s.pending_app_events:  # things that happened outside the chat (e.g. payment)
         note = "[App events since your last reply: " + " ".join(s.pending_app_events) + "]"
         s.pending_app_events.clear()

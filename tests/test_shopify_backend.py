@@ -55,6 +55,7 @@ def make_executor(backend: ShopifyUCPBackend) -> ShoppingToolExecutor:
 
 async def test_discovery_to_checkout_through_the_executor(store):
     backend = make_backend(store, client_id="id", client_secret="secret")
+    backend.set_buyer_ip("s1", "203.0.113.7")
     ex = make_executor(backend)
 
     # Nothing seen yet: the provenance gate holds the write before Shopify is called.
@@ -102,6 +103,8 @@ async def test_discovery_to_checkout_through_the_executor(store):
     assert url not in out.result_text
     checkout_call = next(c for c in store.calls if c[0] == "create_checkout")
     assert checkout_call[2]["authorization"] == "Bearer header.payload.sig"
+    assert checkout_call[2]["shopify-storefront-buyer-ip"] == "203.0.113.7"
+    assert len(checkout_call[1]["checkout"]["line_items"]) == 2
 
     # Every UCP call carried the agent profile.
     assert all(
@@ -114,6 +117,23 @@ async def test_discovery_to_checkout_through_the_executor(store):
 async def test_checkout_without_credentials_uses_the_cart_link(store):
     backend = make_backend(store)
     ex = make_executor(backend)
+    await ex.execute("search_products", {"query": "tent"})
+    await ex.execute("add_to_cart", {"product_id": TENT})
+    out = await ex.execute("checkout", {})
+    url = next(e for e in out.events if e.type == "ui").data["payload"]["handoffs"][0]["url"]
+    assert url.startswith(f"https://{SHOP}/cart/c/")
+    assert not any(c[0] == "create_checkout" for c in store.calls)
+
+
+async def test_a_line_the_cart_drops_is_reported_not_added(store):
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "socks"})
+    out = await ex.execute("add_to_cart", {"product_id": "gid://shopify/Product/3"})
+    assert out.is_error and "already sold out" in out.result_text
+
+
+async def test_checkout_without_a_buyer_ip_falls_back_to_the_cart_link(store):
+    ex = make_executor(make_backend(store, client_id="id", client_secret="secret"))
     await ex.execute("search_products", {"query": "tent"})
     await ex.execute("add_to_cart", {"product_id": TENT})
     out = await ex.execute("checkout", {})

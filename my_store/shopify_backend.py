@@ -115,6 +115,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         # TODO(live): keep these in your session store so a restart keeps carts.
         self._cart_ids: dict[str, str] = {}
         self._continue_urls: dict[str, str] = {}
+        self._buyer_ips: dict[str, str] = {}
         # What the store told us, so cart lines can carry titles and option values.
         self._variants: dict[str, Product] = {}
         self._default_variant: dict[str, str] = {}
@@ -151,12 +152,18 @@ class ShopifyUCPBackend(StorefrontBackend):
         return token
 
     async def _call(
-        self, tool: str, arguments: dict[str, Any], *, ucp: bool = True, auth: bool = False
+        self,
+        tool: str,
+        arguments: dict[str, Any],
+        *,
+        ucp: bool = True,
+        auth: bool = False,
+        headers: dict[str, str] | None = None,
     ) -> Any:
         if ucp:
             meta = {"ucp-agent": {"profile": self.profile}, **arguments.get("meta", {})}
             arguments = {**arguments, "meta": meta}
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json", **(headers or {})}
         if auth:
             headers["Authorization"] = f"Bearer {await self._access_token()}"
         body = {
@@ -370,7 +377,13 @@ class ShopifyUCPBackend(StorefrontBackend):
             return None
         return cart
 
-    async def _put_lines(self, session: ShoppingSessionContext, lines: dict[str, int], changed: str) -> Cart:
+    async def _put_lines(
+        self,
+        session: ShoppingSessionContext,
+        lines: dict[str, int],
+        changed: str,
+        variant_id: str | None = None,
+    ) -> Cart:
         """Write the whole cart (update_cart replaces everything it is sent)."""
         cart_id = self._cart_ids.get(session.session_id)
         payload: dict[str, Any] = {
@@ -391,6 +404,15 @@ class ShopifyUCPBackend(StorefrontBackend):
         raw = content.get("cart") or content
         self._cart_ids[session.session_id] = raw.get("id", cart_id)
         self._raise_if_unavailable(raw, changed)
+        # Shopify can also drop a line with only a warning (e.g. merchandise_out_of_stock when
+        # inventory is 0), so check that the line written is actually in the returned cart.
+        variant_id = variant_id or changed
+        if lines.get(variant_id) and variant_id not in {
+            (line.get("item") or {}).get("id") for line in raw.get("line_items") or []
+        }:
+            reasons = "; ".join(m.get("content") or m.get("code", "") for m in raw.get("messages") or [])
+            detail = f" ({reasons})" if reasons else ""
+            raise Unavailable(f"{changed} could not be added to the cart{detail}")
         return self._cart(session, raw)
 
     async def _lines(self, session: ShoppingSessionContext) -> dict[str, int]:
@@ -429,7 +451,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         variant_id = await self._variant_id(product_id)
         lines = await self._lines(session)
         lines[variant_id] = lines.get(variant_id, 0) + quantity
-        return await self._put_lines(session, lines, product_id)
+        return await self._put_lines(session, lines, product_id, variant_id)
 
     async def update_cart_item(self, session: ShoppingSessionContext, product_id: str, quantity: int) -> Cart:
         lines = await self._lines(session)
@@ -453,15 +475,39 @@ class ShopifyUCPBackend(StorefrontBackend):
         query = f"{parts.query}&" if parts.query else ""
         return urlunsplit(parts._replace(query=query + urlencode({"utm_source": self._utm_source})))
 
+    def set_buyer_ip(self, session_id: str, ip: str | None) -> None:
+        """Record the shopper's IP; authenticated checkout sends it to Shopify for bot checks."""
+        if ip:
+            self._buyer_ips[session_id] = ip
+
     async def checkout_handoff(self, session: ShoppingSessionContext, cart: Cart) -> list[CheckoutHandoff]:
         cart_id = self._cart_ids.get(session.session_id)
         if not cart_id:
             return []
         url = None
-        if self._client_id and self._client_secret:
-            content = await self._call("create_checkout", {"cart_id": cart_id}, auth=True)
-            checkout = content.get("checkout") or content
-            url = checkout.get("continue_url")
+        buyer_ip = self._buyer_ips.get(session.session_id)
+        if self._client_id and self._client_secret and buyer_ip:
+            # create_checkout takes line items, not a cart id, and refuses a request without
+            # the buyer's IP ("Missing required buyer IP header"). The checkout comes back
+            # "incomplete" until the buyer gives contact details on Shopify's page.
+            lines = await self._lines(session)
+            checkout_args = {
+                "checkout": {
+                    "line_items": [{"quantity": q, "item": {"id": vid}} for vid, q in lines.items()]
+                },
+                "meta": {"idempotency-key": str(uuid.uuid4())},
+            }
+            try:
+                content = await self._call(
+                    "create_checkout",
+                    checkout_args,
+                    auth=True,
+                    headers={"Shopify-Storefront-Buyer-IP": buyer_ip},
+                )
+                checkout = content.get("checkout") or content
+                url = checkout.get("continue_url")
+            except (httpx.HTTPError, ShopifyError):
+                url = None  # the cart's own link below still reaches Shopify checkout
         url = url or self._continue_urls.get(session.session_id)
         if not url:
             return []

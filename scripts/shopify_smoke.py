@@ -48,6 +48,8 @@ async def main(query: str) -> None:
         state=state,
         memory=build_memory(config, InMemoryMemoryStore()),
     )
+    # No real shopper here: a documentation-range address lets authenticated checkout run.
+    backend.set_buyer_ip("smoke", os.environ.get("SHOPIFY_SMOKE_BUYER_IP", "203.0.113.7"))
 
     found = await ex.execute("search_products", {"query": query})
     step(f"search_products({query!r})", not found.is_error and bool(state.seen_products), found.result_text)

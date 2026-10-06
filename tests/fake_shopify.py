@@ -17,7 +17,10 @@ _VARIANTS = {
     "gid://shopify/ProductVariant/102": ("gid://shopify/Product/1", {"Size": "M"}, 4800, False),
     "gid://shopify/ProductVariant/103": ("gid://shopify/Product/1", {"Size": "L"}, 5200, True),
     "gid://shopify/ProductVariant/201": ("gid://shopify/Product/2", {"Title": "Default Title"}, 22900, True),
+    "gid://shopify/ProductVariant/301": ("gid://shopify/Product/3", {"Title": "Default Title"}, 1800, True),
 }
+# Listed as available in search, but the cart refuses it (tracked inventory at 0), as seen live.
+_SOLD_OUT_AT_CART = {"gid://shopify/ProductVariant/301"}
 _PRODUCTS = {
     "gid://shopify/Product/1": {
         "title": "Ridgeline Merino Tee",
@@ -27,6 +30,11 @@ _PRODUCTS = {
     "gid://shopify/Product/2": {
         "title": "Summit 2P Backpacking Tent",
         "description": {"html": "Freestanding two-person tent."},
+        "options": {"Title": ["Default Title"]},
+    },
+    "gid://shopify/Product/3": {
+        "title": "Trail Socks",
+        "description": {"html": "Merino hiking socks."},
         "options": {"Title": ["Default Title"]},
     },
 }
@@ -164,10 +172,19 @@ class FakeShopifyStore:
     def _accept(self, lines: list[dict[str, Any]]) -> tuple[list[dict], list[dict]]:
         kept, messages = [], []
         for line in lines:
-            if _VARIANTS[line["item"]["id"]][3]:
+            vid = line["item"]["id"]
+            if _VARIANTS[vid][3] and vid not in _SOLD_OUT_AT_CART:
                 kept.append(line)
-            else:
-                messages.append({"type": "error", "code": "out_of_stock", "severity": "recoverable"})
+            else:  # the live store drops the line and says so only with a warning
+                title = _PRODUCTS[_VARIANTS[vid][0]]["title"]
+                messages.append(
+                    {
+                        "type": "warning",
+                        "content_type": "plain",
+                        "code": "merchandise_out_of_stock",
+                        "content": f"The product '{title}' is already sold out.",
+                    }
+                )
         return kept, messages
 
     def _create_cart(self, body, args, request):
@@ -194,15 +211,32 @@ class FakeShopifyStore:
     def _create_checkout(self, body, args, request):
         if not request.headers.get("authorization", "").startswith("Bearer "):
             return self._result(body, {"messages": [{"type": "error", "code": "unauthorized"}]}, True)
+        if "Shopify-Storefront-Buyer-IP" not in request.headers:  # as live: a JSON-RPC 422
+            error = {
+                "code": -32000,
+                "message": "AuthenticationFailed",
+                "data": "Missing required buyer IP header.",
+            }
+            return httpx.Response(422, json={"jsonrpc": "2.0", "id": body["id"], "error": error})
+        if "line_items" not in args.get("checkout", {}):
+            text = "Invalid arguments: object at `/checkout` is missing required properties: line_items"
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {"content": [{"type": "text", "text": text}], "isError": True},
+                },
+            )
         token = uuid.uuid4().hex[:8]
         return self._result(
             body,
-            {
-                "checkout": {
-                    "id": f"gid://shopify/Checkout/{token}",
-                    "status": "incomplete",
-                    "continue_url": f"https://{SHOP}/checkouts/cn/{token}",
-                }
+            {  # live: the checkout itself, not wrapped; incomplete until the buyer adds contact info
+                "id": f"gid://shopify/Checkout/{token}",
+                "status": "incomplete",
+                "line_items": args["checkout"]["line_items"],
+                "messages": [{"type": "error", "code": "buyer_identity_contact_method_required"}],
+                "continue_url": f"https://{SHOP}/checkouts/cn/{token}",
             },
         )
 
