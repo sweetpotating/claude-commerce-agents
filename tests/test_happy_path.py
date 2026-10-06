@@ -58,3 +58,14 @@ def test_buttons_only_act_on_products_the_chat_showed(client):
     assert client.post("/api/cart/add", json={"product_id": "TS-103"}, headers=h).status_code == 400
     assert client.post("/api/checkout", headers=h).status_code == 400  # empty cart
     assert client.post("/api/cart/add", json={"product_id": "TS-103"}).status_code == 401
+
+
+def test_product_page_opens_inside_the_chat(client):
+    sid, h = start(client)
+    shown(sid, "merino tee")
+    page = client.post("/api/product", json={"product_id": "TS-100"}, headers=h).json()
+    assert page["title"] == "Ridgeline Merino Tee" and page["description"]
+    assert {v["option_values"]["size"] for v in page["variants"]} == {"S", "M", "L"}
+    assert "image_urls" not in page and isinstance(page["images"], list)
+    # The page counts as a lookup: a size picked on it goes straight into the cart.
+    assert client.post("/api/cart/add", json={"product_id": "TS-101"}, headers=h).status_code == 200

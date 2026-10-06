@@ -274,7 +274,7 @@ _MATRIX_SCHEMA: dict[str, Any] = {
 
 
 # Attributes the UI uses itself rather than showing as a table row.
-_HIDDEN_ATTRIBUTES = {"product_url"}
+_HIDDEN_ATTRIBUTES = {"product_url", "image_urls"}
 
 
 def _cell(value: Any) -> str:

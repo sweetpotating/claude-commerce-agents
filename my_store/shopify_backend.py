@@ -331,6 +331,10 @@ class ShopifyUCPBackend(StorefrontBackend):
             **family.model_dump(),
             "long_description": _text(raw.get("description")),
         }
+        # Every photo, for the in-chat product page (search keeps just the first).
+        photos = [m["url"] for m in raw.get("media") or [] if isinstance(m, dict) and m.get("url")]
+        if len(photos) > 1:
+            details["attributes"] = {**family.attributes, "image_urls": " ".join(photos[:8])}
         variants_raw = {v["id"]: v for v in raw.get("variants") or []}
 
         if "ProductVariant" in product_id and product_id in variants_raw:

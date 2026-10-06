@@ -284,9 +284,11 @@ def _first_sentence(text: str) -> str:
     return (text.split(". ")[0].rstrip(".") + ".")[:240] if text else "That didn't work."
 
 
-@app.post("/api/product/options")
-async def product_options(body: ProductRef, x_session_id: str | None = Header(default=None)) -> dict:
-    """The variants of a product this chat showed, so the card can offer them as buttons."""
+@app.post("/api/product")
+async def product_page(body: ProductRef, x_session_id: str | None = Header(default=None)) -> dict:
+    """The in-chat product page for a product this chat showed: photos, description, specs,
+    and variants for the option buttons. Opening it counts as a lookup, so the variants it
+    lists can go straight into the cart."""
     s = current(x_session_id)
     if body.product_id not in s.state.seen_products:
         raise HTTPException(400, "Ask the assistant about this product first.")
@@ -294,9 +296,22 @@ async def product_options(body: ProductRef, x_session_id: str | None = Header(de
     if details is None:
         raise HTTPException(404, "This product is no longer available.")
     s.state.remember_products([details, *details.variants])  # as the agent's own lookup does
+    attributes = dict(details.attributes)
+    images = [u for u in attributes.pop("image_urls", "").split() if u] or (
+        [details.image_url] if details.image_url else []
+    )
     return {
         "product_id": details.product_id,
         "title": details.title,
+        "brand": details.brand,
+        "price": details.price,
+        "currency": details.currency,
+        "in_stock": details.in_stock,
+        "images": images,
+        "description": details.long_description or details.short_description,
+        "specs": details.specs,
+        "highlights": details.review_highlights,
+        "product_url": attributes.get("product_url"),
         "options": details.options,
         "variants": [
             {
@@ -309,6 +324,10 @@ async def product_options(body: ProductRef, x_session_id: str | None = Header(de
             for v in details.variants
         ],
     }
+
+
+# The card's option buttons read the same record.
+app.post("/api/product/options")(product_page)
 
 
 @app.post("/api/cart/add")
