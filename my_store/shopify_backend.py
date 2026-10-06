@@ -72,6 +72,7 @@ _RETRIES = 5  # for Shopify's 429 and 502-504 answers: 0.5+1+2+4+8s at most
 _CACHED_TOOLS = {"search_catalog", "get_product", "search_shop_policies_and_faqs"}
 _CACHE_SECONDS = 120
 _CACHE_SIZE = 1000
+_FRESH_CART_SECONDS = 30
 _ZERO_DECIMAL = {"JPY", "KRW", "VND", "CLP", "ISK", "UGX", "XAF", "XOF"}
 _UNAVAILABLE_CODES = ("out_of_stock", "insufficient_stock", "unavailable", "not_available", "sold_out")
 _TAG = re.compile(r"<[^>]+>")
@@ -226,6 +227,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         self._http = http or httpx.AsyncClient(timeout=20)
         self._ids = itertools.count(1)
         self._read_cache: dict[str, tuple[float, Any]] = {}
+        self._written: dict[str, tuple[float, dict[str, Any]]] = {}
         self._token: tuple[str, float] | None = None
         # TODO(live): keep these in your session store so a restart keeps carts.
         self._cart_ids: dict[str, str] = {}
@@ -584,6 +586,12 @@ class ShopifyUCPBackend(StorefrontBackend):
         cart_id = self._cart_ids.get(session.session_id)
         if not cart_id:
             return None
+        # The cart this backend wrote moments ago, rather than reading it back before every
+        # change and every cap check: most cart calls, which a busy store rate-limits first
+        # (live: 429 on cart writes). Older than _FRESH_CART_SECONDS: read it from Shopify.
+        fresh = self._written.get(session.session_id)
+        if fresh and fresh[0] > time.monotonic():
+            return copy.deepcopy(fresh[1])
         content = await self._call("get_cart", {"id": cart_id})
         cart = content.get("cart") or content
         if any(m.get("code") == "not_found" for m in cart.get("messages") or []):
@@ -611,6 +619,7 @@ class ShopifyUCPBackend(StorefrontBackend):
                 meta = {"idempotency-key": str(uuid.uuid4())}
                 await self._call("cancel_cart", {"id": cart_id, "meta": meta})
                 self._cart_ids.pop(session.session_id, None)
+            self._written.pop(session.session_id, None)
             return Cart(currency=self._currency)
         if cart_id:
             content = await self._call("update_cart", {"id": cart_id, "cart": payload})
@@ -618,6 +627,7 @@ class ShopifyUCPBackend(StorefrontBackend):
             content = await self._call("create_cart", {"cart": payload})
         raw = content.get("cart") or content
         self._cart_ids[session.session_id] = raw.get("id", cart_id)
+        self._written[session.session_id] = (time.monotonic() + _FRESH_CART_SECONDS, copy.deepcopy(raw))
         self._raise_if_unavailable(raw, changed)
         # Shopify can also drop a line with only a warning (e.g. merchandise_out_of_stock when
         # inventory is 0), so check that the line written is actually in the returned cart.

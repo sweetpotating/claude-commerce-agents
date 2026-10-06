@@ -374,11 +374,27 @@ async def test_shopify_rate_limits_are_retried_not_shown_to_the_shopper(store, m
 
 
 async def test_catalog_reads_are_cached_briefly_and_cart_reads_never(store):
-    ex = make_executor(make_backend(store))
+    backend = make_backend(store)
+    ex = make_executor(backend)
     await ex.execute("search_products", {"query": "tent"})
     await ex.execute("search_products", {"query": "tent"})
     assert [c[0] for c in store.calls].count("search_catalog") == 1
     await ex.execute("add_to_cart", {"product_id": TENT})
+    backend._written.clear()  # past the moments after our own write
     await ex.execute("get_cart", {})
     await ex.execute("get_cart", {})
-    assert [c[0] for c in store.calls].count("get_cart") >= 2
+    assert [c[0] for c in store.calls].count("get_cart") == 2
+
+
+async def test_a_cart_just_written_is_not_read_back_before_the_next_change(store):
+    # Each add used to read the cart, then write it: two calls, and the busy store's
+    # rate limit hit the read first.
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent tour"})
+    await ex.execute("add_to_cart", {"product_id": TENT})
+    reads = [c[0] for c in store.calls].count("get_cart")
+    await ex.execute("add_to_cart", {"product_id": TOUR})
+    await ex.execute("update_cart_item", {"product_id": TENT, "quantity": 2})
+    assert [c[0] for c in store.calls].count("get_cart") == reads
+    lines = {li["item"]["id"]: li["quantity"] for li in next(iter(store.carts.values()))["line_items"]}
+    assert lines == {"gid://shopify/ProductVariant/201": 2, "gid://shopify/ProductVariant/401": 1}

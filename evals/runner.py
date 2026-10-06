@@ -20,6 +20,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import statistics
 import sys
 import time
@@ -86,6 +87,13 @@ def parse_sse(body: str) -> list[tuple[str, dict]]:
     return events
 
 
+_OUTAGE = re.compile(r"assistant is (unavailable|busy)|answered (429|50[234])|credit balance", re.IGNORECASE)
+
+
+def _outage_text(text: str) -> bool:
+    return bool(_OUTAGE.search(text or ""))
+
+
 def turn_record(user: str, events: list[tuple[str, dict]], secs: float) -> dict:
     turn: dict[str, Any] = {
         "kind": "chat",
@@ -117,7 +125,11 @@ def turn_record(user: str, events: list[tuple[str, dict]], secs: float) -> dict:
             turn["usage"] = d.get("usage") or {}
     # A turn that errors before any model output is an outage (credit, rate limit, network),
     # not the agent's behaviour; the runner reports it apart and stops counting it.
-    turn["infra_error"] = bool(turn["error"]) and not turn["usage"] and not turn["tools"]
+    turn["infra_error"] = bool(turn["error"]) and (
+        (not turn["usage"] and not turn["tools"]) or _outage_text(turn["error"])
+    )
+    # The store refusing every retry (rate limit) is the environment too.
+    turn["store_outage"] = any(not ok and _outage_text(summary) for _, ok, summary in turn["results"])
     return turn
 
 
@@ -172,6 +184,7 @@ class Chat:
         }
         if response.status_code != 200:
             turn["error"] = f"{label}: HTTP {response.status_code} {response.text[:200]}"
+            turn["infra_error"] = _outage_text(response.text)
         else:
             data = response.json()
             if path == "/api/checkout":
@@ -353,7 +366,8 @@ async def run_case(case: dict, trial: int, http, host, judge_on: bool) -> dict:
     except Exception as error:
         checks = {"run": (False, f"run error: {error!r}")}
         row["status"] = "error"
-    if any(t.get("infra_error") for t in chat.turns):
+    shopper_down = bool(row.get("conversion", {}).get("shopper_error"))
+    if shopper_down or any(t.get("infra_error") or t.get("store_outage") for t in chat.turns):
         row["status"] = "infra_error"
     row["checks"] = {k: {"passed": ok, "detail": detail} for k, (ok, detail) in checks.items()}
     if judge_on and case.get("expected", {}).get("rubric") and row["status"] == "ok":
@@ -493,7 +507,8 @@ async def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ids", nargs="*")
     parser.add_argument("--tags", nargs="*")
     parser.add_argument("-n", "--trials", type=int, default=1)
-    parser.add_argument("-j", "--concurrency", type=int, default=4)
+    # Shopify rate-limits cart writes when four chats run for half an hour; two keep it under.
+    parser.add_argument("-j", "--concurrency", type=int, default=2)
     parser.add_argument("--no-judge", action="store_true")
     parser.add_argument("--backend", default=os.environ.get("EVAL_BACKEND", "shopify"))
     parser.add_argument("--update-baseline", action="store_true")

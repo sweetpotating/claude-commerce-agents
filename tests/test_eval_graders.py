@@ -85,3 +85,14 @@ def test_an_outage_is_reported_apart_from_agent_failures():
     ]
     summary = summarize(rows, [{"id": "a", "flow": "f"}, {"id": "b", "flow": "f"}])
     assert summary["infra_errors"] == 1 and summary["pass_rate"] == 1.0 and summary["cases"] == 1
+
+
+def test_a_store_rate_limit_counts_as_an_outage_not_an_agent_failure():
+    events = [
+        ("tool_call", {"tool": "add_to_cart", "input": {}}),
+        ("tool_result", {"tool": "add_to_cart", "is_error": True, "summary": "The store answered 429."}),
+        ("text_delta", {"text": "The store couldn't take that just now."}),
+        ("turn_complete", {"usage": {"input_tokens": 5}}),
+    ]
+    assert turn_record("add it", events, 1.0)["store_outage"]
+    assert not turn_record("add it", parse_sse(SSE), 1.0)["store_outage"]
