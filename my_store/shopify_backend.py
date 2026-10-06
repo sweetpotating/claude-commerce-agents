@@ -73,6 +73,55 @@ _RUN_ON = re.compile(r"(?<=[a-z)\]])([.!?])(?=[A-Z])")
 # and returns [] otherwise (live: "service fees", "ticket transfer", even "refund"). These
 # phrasings reach the store's general policies, which often settle the question anyway.
 _FALLBACK_POLICY_QUERIES = ("What is your return policy?", "What is your shipping policy?")
+# Phrasings that reach a typical store's FAQ entries. Their answers seed a local FAQ list
+# that search_policies also matches by keyword, because Shopify's own search finds an entry
+# only from near its exact wording (live: "how do I contact support" found the contact FAQ;
+# "contact", "contact support" and "exchange" found nothing).
+_FAQ_SEED_QUERIES = (
+    *_FALLBACK_POLICY_QUERIES,
+    "How do I contact customer support?",
+    "Can I refund or exchange a product?",
+    "Do you accept store credit?",
+    "What countries do you ship to?",
+    "What payment methods do you accept?",
+    "How do I track my order?",
+    "Can I cancel or change my order?",
+    "Do you offer gift wrapping?",
+)
+_FAQ_TTL_SECONDS = 3600
+_STOPWORDS = frozenset(
+    "a an and are can do does for how i in is it me my of on or the to what when where which "
+    "who why will with you your we our there any".split()
+)
+# Words a shopper uses for the same FAQ topic; each group counts as one keyword.
+_SYNONYMS = (
+    {
+        "contact",
+        "support",
+        "email",
+        "e-mail",
+        "phone",
+        "call",
+        "reach",
+        "human",
+        "person",
+        "agent",
+        "someone",
+        "talk",
+        "speak",
+    },
+    {"exchange", "swap", "replace", "replacement"},
+    {"refund", "return", "returns", "money"},
+    {"ship", "shipping", "deliver", "delivery", "send", "post", "country", "countries"},
+    {"cancel", "cancellation", "change", "modify"},
+    {"pay", "payment", "card", "credit", "paypal"},
+    {"track", "tracking", "where", "status"},
+)
+# Words that ask for a ranking the catalog has no data for (no sales or rating counts).
+_RANKING_WORDS = re.compile(
+    r"\b(best[\s-]?sell(?:er|ers|ing)?|top[\s-]?rated|popular|trending|top|best|hot|favou?rites?)\b",
+    re.IGNORECASE,
+)
 # What this backend needs the model to know about Shopify, added to the system prompt.
 SHOPIFY_PROMPT_NOTES = (
     "The store's search matches every word of a query, so a long query often finds nothing: "
@@ -91,6 +140,21 @@ class ShopifyError(RuntimeError):
 
 class ShopifyNotFound(ShopifyError):
     """Shopify answered that the thing asked for does not exist (e.g. product_not_found)."""
+
+
+class CartRefused(Unavailable):
+    """Shopify's cart dropped a line the catalog lists as available. Its message then says
+    "already sold out" (live: every shipped product, when the buyer's country is one the
+    store does not ship to), which is not true of the item, so it is reported apart."""
+
+
+def _keywords(text: str) -> set[str]:
+    words = {w.rstrip("s") if len(w) > 4 else w for w in re.findall(r"[a-z][a-z-]+", text.lower())}
+    words -= _STOPWORDS
+    for group in _SYNONYMS:
+        if words & {w.rstrip("s") if len(w) > 4 else w for w in group}:
+            words |= {f"#{min(group)}"}  # one shared token per synonym group
+    return words
 
 
 def _money(value: Any, currency: str = "USD") -> float:
@@ -135,6 +199,12 @@ class ShopifyUCPBackend(StorefrontBackend):
         self.profile = agent_profile_url
         self._client_id, self._client_secret = client_id, client_secret
         self._country = buyer_country
+        self._currency = "USD"
+        self._store_loaded = False
+        self._store_lock = asyncio.Lock()
+        self._store_retry_at = 0.0
+        self._faqs: dict[str, Policy] = {}
+        self._faqs_loaded_at = 0.0
         self._utm_source = utm_source
         self._http = http or httpx.AsyncClient(timeout=20)
         self._ids = itertools.count(1)
@@ -219,11 +289,40 @@ class ShopifyUCPBackend(StorefrontBackend):
             messages = content.get("messages") if isinstance(content, dict) else None
             codes = [str(m.get("code", "")) for m in messages or [] if isinstance(m, dict)]
             error = ShopifyNotFound if any(c.endswith("not_found") for c in codes) else ShopifyError
-            raise error(f"{tool}: {messages or content}")
+            # Readable text for the shopper-facing error: Shopify's own wording, else codes.
+            said = [str(m.get("content") or m.get("code")) for m in messages or [] if isinstance(m, dict)]
+            raise error(f"{tool}: {'; '.join(said) if said else content}")
         return content
 
     def _context(self) -> dict[str, Any]:
         return {"address_country": self._country} if self._country else {}
+
+    async def _load_store(self) -> None:
+        """The store's own country, currency, and shipping countries, from /meta.json, once.
+        A buyer country left unset, or set to one the store does not ship to, becomes the
+        store's country: otherwise Shopify places the buyer by this server's IP and its cart
+        refuses every shipped product as "already sold out" (seen live on Render)."""
+        if self._store_loaded or time.monotonic() < self._store_retry_at:
+            return
+        async with self._store_lock:  # parallel first calls wait for the one fetch
+            if self._store_loaded or time.monotonic() < self._store_retry_at:
+                return
+            try:
+                response = await self._http.get(f"https://{self.domain}/meta.json")
+                response.raise_for_status()
+                meta = response.json()
+            except (httpx.HTTPError, ValueError):
+                # Keep the configured country for now (non-shipped items still add); retry
+                # in a few minutes rather than on every call.
+                self._store_retry_at = time.monotonic() + 300
+                return
+            self._store_loaded = True
+        self._currency = meta.get("currency") or self._currency
+        ships_to = [str(c).upper() for c in meta.get("ships_to_countries") or []]
+        configured = (self._country or "").upper()
+        if not configured or (ships_to and configured not in ships_to):
+            fallback = meta.get("country") if meta.get("country") in ships_to or not ships_to else None
+            self._country = fallback or (ships_to[0] if ships_to else self._country)
 
     # -- mapping -------------------------------------------------------------------------
 
@@ -298,6 +397,16 @@ class ShopifyUCPBackend(StorefrontBackend):
         limit: int = 8,
     ) -> list[Product]:
         filters = filters or SearchFilters()
+        await self._load_store()
+        products = await self._search(query, filters, limit)
+        if not products and _RANKING_WORDS.search(query):
+            # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales
+            # or rating data, so drop the ranking words and fall back to relevance.
+            rest = " ".join(_RANKING_WORDS.sub(" ", query).split())
+            products = await self._search(rest, filters, limit)
+        return products
+
+    async def _search(self, query: str, filters: SearchFilters, limit: int) -> list[Product]:
         catalog: dict[str, Any] = {"query": query, "pagination": {"limit": limit}}
         if self._context():
             catalog["context"] = self._context()
@@ -321,6 +430,7 @@ class ShopifyUCPBackend(StorefrontBackend):
     async def _get_product(
         self, product_id: str, selected: list[dict[str, str]] | None = None
     ) -> dict[str, Any] | None:
+        await self._load_store()
         catalog: dict[str, Any] = {"id": product_id}
         if selected:
             catalog["selected"] = selected
@@ -436,6 +546,7 @@ class ShopifyUCPBackend(StorefrontBackend):
         variant_id: str | None = None,
     ) -> Cart:
         """Write the whole cart (update_cart replaces everything it is sent)."""
+        await self._load_store()
         cart_id = self._cart_ids.get(session.session_id)
         payload: dict[str, Any] = {
             "line_items": [{"quantity": q, "item": {"id": vid}} for vid, q in lines.items()]
@@ -447,7 +558,7 @@ class ShopifyUCPBackend(StorefrontBackend):
                 meta = {"idempotency-key": str(uuid.uuid4())}
                 await self._call("cancel_cart", {"id": cart_id, "meta": meta})
                 self._cart_ids.pop(session.session_id, None)
-            return Cart()
+            return Cart(currency=self._currency)
         if cart_id:
             content = await self._call("update_cart", {"id": cart_id, "cart": payload})
         else:
@@ -463,7 +574,11 @@ class ShopifyUCPBackend(StorefrontBackend):
         }:
             reasons = "; ".join(m.get("content") or m.get("code", "") for m in raw.get("messages") or [])
             detail = f" ({reasons})" if reasons else ""
-            raise Unavailable(f"{changed} could not be added to the cart{detail}")
+            known = self._variants.get(variant_id)
+            if known is not None and not known.in_stock:
+                raise Unavailable(f"{changed} could not be added to the cart{detail}")
+            # The catalog says available: the cart's refusal is not a stock-out.
+            raise CartRefused(f"{changed} could not be added to the cart{detail}")
         return self._cart(session, raw)
 
     async def _lines(self, session: ShoppingSessionContext) -> dict[str, int]:
@@ -475,7 +590,8 @@ class ShopifyUCPBackend(StorefrontBackend):
 
     async def get_cart(self, session: ShoppingSessionContext) -> Cart:
         raw = await self._raw_cart(session)
-        return self._cart(session, raw) if raw else Cart()
+        await self._load_store()
+        return self._cart(session, raw) if raw else Cart(currency=self._currency)
 
     async def _variant_id(self, product_id: str) -> str:
         if "ProductVariant" in product_id:
@@ -599,14 +715,42 @@ class ShopifyUCPBackend(StorefrontBackend):
         return None
 
     async def search_policies(self, session: ShoppingSessionContext, query: str) -> list[Policy]:
-        found = await self._policies(query)
+        """Shopify's answers for the query, then the store's FAQ entries that share its
+        keywords (synonyms included), best match first. Shopify alone misses an entry asked
+        in other words; when nothing matches either way, the general return and shipping
+        policies, which settle many questions."""
+        found = {p.policy_id: p for p in await self._policies(query)}
+        faqs = await self._faq_list()
+        for p in found.values():
+            faqs.setdefault(p.policy_id, p)
+        wanted = _keywords(query)
+        # A keyword in the question counts double one in the answer.
+        scored = sorted(
+            (
+                (2 * len(wanted & _keywords(p.title)) + len(wanted & _keywords(p.content)), p)
+                for p in faqs.values()
+            ),
+            key=lambda pair: -pair[0],
+        )
+        for score, policy in scored:
+            if score and len(found) < 5:
+                found.setdefault(policy.policy_id, policy)
         if found:
-            return found
-        seen: dict[str, Policy] = {}
-        for fallback in _FALLBACK_POLICY_QUERIES:
-            for policy in await self._policies(fallback):
-                seen.setdefault(policy.policy_id, policy)
-        return list(seen.values())
+            return list(found.values())
+        return [p for p in faqs.values() if p.title in _FALLBACK_POLICY_QUERIES] or [
+            p for q in _FALLBACK_POLICY_QUERIES for p in await self._policies(q)
+        ]
+
+    async def _faq_list(self) -> dict[str, Policy]:
+        """The store's FAQ entries, gathered from the seed questions; refreshed hourly."""
+        if not self._faqs or time.monotonic() - self._faqs_loaded_at > _FAQ_TTL_SECONDS:
+            batches = await asyncio.gather(
+                *(self._policies(q) for q in _FAQ_SEED_QUERIES), return_exceptions=True
+            )
+            faqs = {p.policy_id: p for batch in batches if isinstance(batch, list) for p in batch}
+            if faqs:
+                self._faqs, self._faqs_loaded_at = faqs, time.monotonic()
+        return self._faqs
 
     async def _policies(self, query: str) -> list[Policy]:
         content = await self._call("search_shop_policies_and_faqs", {"query": query}, ucp=False)

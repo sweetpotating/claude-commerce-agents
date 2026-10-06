@@ -158,3 +158,15 @@ async def test_chat_stream_sends_keepalives_while_a_turn_is_quiet(monkeypatch):
     out = [chunk async for chunk in host.with_keepalive(slow_turn())]
     assert out[0].startswith("event: text_delta") and out[-1].startswith("event: turn_complete")
     assert ": keep-alive\n\n" in out[1:-1]
+
+
+def test_a_person_is_always_reachable():
+    from my_store import discovery
+    from my_store.industry import CONTACT_EMAIL
+
+    notes = shopify_agent_config(**industry_config_overrides()).domain_search_notes
+    assert CONTACT_EMAIL in notes and "Never say there is no way to reach a person" in notes
+    # Asking for a person is not a product search, so no forced search_products round.
+    for text in ("I want to talk to a human", "how do I contact support?", "can I speak to someone"):
+        assert not discovery.shopping_request(text), text
+    assert discovery.shopping_request("I need a gift for a person who loves books")

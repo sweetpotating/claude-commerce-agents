@@ -1,10 +1,20 @@
 // Shopping assistant bubble for a Shopify theme. Add before </body> in layout/theme.liquid:
 //   <script src="https://YOUR-APP.onrender.com/widget.js" defer></script>
 // It opens the app's chat page in a frame, so the theme's CSS and the chat's never mix.
-(() => {
+// It shows only on the Shopify stores the app serves (WIDGET_SHOPS): on any other store, a
+// trial store with the same theme for example, the bubble stays hidden rather than selling
+// that store's visitors another store's catalog.
+(async () => {
   if (window.__shoppingAssistant) return;
   window.__shoppingAssistant = true;
   const origin = new URL(document.currentScript.src).origin;
+  const shop = (window.Shopify && window.Shopify.shop || "").toLowerCase();
+  if (shop) {
+    try {
+      const config = await (await fetch(`${origin}/api/widget-config`)).json();
+      if (config.shops && config.shops.length && !config.shops.includes(shop)) return;
+    } catch { return; } // can't tell which store this app serves: stay hidden
+  }
   const KEY = "shopping-assistant-open";
   const store = {
     get: () => { try { return sessionStorage.getItem(KEY) === "1"; } catch { return false; } },

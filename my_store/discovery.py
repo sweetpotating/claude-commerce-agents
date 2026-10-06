@@ -67,6 +67,16 @@ SHOPPING_CUES = (
 
 # Requests that act on the cart, memory, or the conversation itself: no search needed.
 SKIP_CUES = (
+    # A request for a person is not a product search ("I want to talk to a human").
+    "human",
+    "real person",
+    "talk to",
+    "speak to",
+    "speak with",
+    "contact",
+    "support",
+    "complain",
+    "manager",
     "cart",
     "checkout",
     "check out",

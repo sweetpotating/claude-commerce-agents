@@ -30,7 +30,7 @@ from typing import Any
 from commerce_common.memory import InMemoryMemoryStore
 from commerce_common.streaming import AgentEvent, to_sse
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from shopping_agent import (
     PageContext,
@@ -43,6 +43,7 @@ from shopping_agent_runtime import ShoppingAgent
 
 from . import discovery, guards
 from .backend import MyStoreBackend
+from .executor import StoreToolExecutor
 from .industry import industry_config_overrides, industry_extensions
 from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
 
@@ -79,6 +80,9 @@ agent = ShoppingAgent(
     memory_store=InMemoryMemoryStore(),  # swap for a durable MemoryStore
     # Travel itineraries and plan tables from the reference verticals (industry.py).
     extra_presentation_tools=industry_extensions(),
+    # Cart rules from the live UAT: no add before a same-round search returns, the store's
+    # own error text, cart lines count as seen (executor.py).
+    executor_class=StoreToolExecutor,
 )
 
 
@@ -151,6 +155,22 @@ async def widget() -> FileResponse:
     return FileResponse(STATIC / "widget.js", media_type="text/javascript")
 
 
+# The Shopify stores whose catalog this deployment serves. widget.js shows the bubble only
+# on these, so the same script tag on another store (a trial store) shows no chat that
+# would sell it this store's products. Comma-separated myshopify domains.
+WIDGET_SHOPS = [
+    d.strip().lower()
+    for d in os.environ.get("WIDGET_SHOPS", os.environ.get("SHOPIFY_STORE_DOMAIN", "")).split(",")
+    if d.strip()
+]
+
+
+@app.get("/api/widget-config", include_in_schema=False)
+async def widget_config() -> JSONResponse:
+    # Read cross-origin by widget.js on the store's own domain; the list is public.
+    return JSONResponse({"shops": WIDGET_SHOPS}, headers={"Access-Control-Allow-Origin": "*"})
+
+
 @app.get("/healthz", include_in_schema=False)
 async def healthz() -> dict:
     return {"ok": True}
@@ -170,8 +190,10 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     s = current(x_session_id)
     ip = guards.client_ip(request)
     guards.chat_limiter.check(ip, "You're sending messages quickly. Please wait a moment.")
+    guards.token_budget.check()
     if s.turns >= guards.TURNS_PER_SESSION:
         raise HTTPException(429, "This chat has reached its length limit. Start a new chat to continue.")
+    guards.ip_daily.check(ip, "You've reached today's chat limit. Please come back tomorrow.")
     guards.daily_budget.spend()
     s.turns += 1
     if isinstance(backend, ShopifyUCPBackend):
@@ -199,6 +221,8 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
+                if event.type == "turn_complete":
+                    guards.token_budget.charge(event.data.get("usage") or {})
                 if event.type == "ui":
                     component, payload = event.data.get("component"), event.data.get("payload") or {}
                     has_chips |= component == "suggestions"

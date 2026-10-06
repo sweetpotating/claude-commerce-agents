@@ -9,10 +9,11 @@ import httpx
 import pytest
 from commerce_common.memory import InMemoryMemoryStore
 from commerce_common.skills import SkillRegistry
-from shopping_agent import ShoppingSessionContext, ShoppingSessionState
-from shopping_agent.executor import ShoppingToolExecutor, build_memory
+from shopping_agent import SearchFilters, ShoppingSessionContext, ShoppingSessionState
+from shopping_agent.executor import build_memory
 from shopping_agent.gates import OPTIONS_GATE, PROVENANCE_GATE
 
+from my_store.executor import StoreToolExecutor
 from my_store.shopify_backend import SHOPIFY_PROMPT_NOTES, ShopifyUCPBackend, _text, shopify_agent_config
 
 from .fake_shopify import SHOP, FakeShopifyStore
@@ -43,9 +44,9 @@ def make_backend(store: FakeShopifyStore, **kwargs) -> ShopifyUCPBackend:
     )
 
 
-def make_executor(backend: ShopifyUCPBackend) -> ShoppingToolExecutor:
+def make_executor(backend: ShopifyUCPBackend) -> StoreToolExecutor:
     config = shopify_agent_config(brand_name="Trailhead")
-    return ShoppingToolExecutor(
+    return StoreToolExecutor(  # the app's executor (my_store/executor.py)
         backend=backend,
         config=config,
         skills=SkillRegistry([]),
@@ -218,18 +219,34 @@ async def test_a_policy_search_shopify_cannot_place_falls_back_to_the_general_po
     assert "non-refundable" in out.result_text and "3-7 business days" in out.result_text
 
 
-async def test_without_a_buyer_country_shopify_calls_physical_goods_sold_out(store):
-    # Seen live: with no country (or one the store does not ship to) every shipped product is
-    # "already sold out" at the cart while search says available; vouchers still add.
-    ex = make_executor(make_backend(store, buyer_country=None))
-    await ex.execute("search_products", {"query": "tent tour"})
-    refused = await ex.execute("add_to_cart", {"product_id": TENT})
-    assert refused.is_error and "already sold out" in refused.result_text
-    assert not (await ex.execute("add_to_cart", {"product_id": TOUR})).is_error
-
-    ex = make_executor(make_backend(FakeShopifyStore(), buyer_country="US"))
+@pytest.mark.parametrize("country", [None, "DE"])
+async def test_a_missing_or_unshipped_buyer_country_becomes_the_stores_own(country):
+    # Seen live on Render: with no country (or one the store does not ship to) Shopify's cart
+    # refused every shipped product as "already sold out". The store's /meta.json names its
+    # country and the countries it ships to, so the backend uses those.
+    store = FakeShopifyStore()
+    ex = make_executor(make_backend(store, buyer_country=country))
     await ex.execute("search_products", {"query": "tent"})
     assert not (await ex.execute("add_to_cart", {"product_id": TENT})).is_error
+    create = next(c for c in store.calls if c[0] == "create_cart")
+    assert create[1]["cart"]["context"] == {"address_country": "US"}
+
+
+async def test_a_cart_refusal_of_an_available_item_is_not_called_sold_out():
+    # Without /meta.json and a country the cart still drops shipped goods; the catalog says
+    # they are available, so the agent must not tell the shopper they are sold out.
+    ex = make_executor(make_backend(FakeShopifyStore(meta=False), buyer_country=None))
+    await ex.execute("search_products", {"query": "tent tour"})
+    refused = await ex.execute("add_to_cart", {"product_id": TENT})
+    assert refused.is_error and "do not call it sold out" in refused.result_text
+    assert not (await ex.execute("add_to_cart", {"product_id": TOUR})).is_error
+
+    # A variant the catalog itself marks out of stock is still reported as such.
+    ex = make_executor(make_backend(FakeShopifyStore()))
+    await ex.execute("search_products", {"query": "merino"})
+    await ex.execute("get_product_details", {"product_id": TEE})
+    oos = await ex.execute("add_to_cart", {"product_id": TEE_M})
+    assert oos.is_error and "out of stock" in oos.result_text
 
 
 def test_config_switches_off_what_shopify_has_no_tool_for():
@@ -252,3 +269,88 @@ def test_descriptions_get_the_space_shopify_leaves_out_between_sentences():
         == "Guided coach tour with lunch. Experience with iKnowledge. Sizes S, M, L (L is out). Pick"
     )
     assert _text("Version 2.5 of e.g. iKnowledge") == "Version 2.5 of e.g. iKnowledge"
+
+
+async def test_an_add_in_the_same_round_as_a_search_waits_for_its_results(store):
+    # Live: "add the tour too" searched for the tour and, in the same round, added the mug
+    # the model had tried before. One function from ``execute`` is one round.
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent"})
+    one_round = ex.execute
+    await one_round("search_products", {"query": "tour"})
+    held = await one_round("add_to_cart", {"product_id": TENT})
+    assert held.is_error and "results are not back yet" in held.result_text and not store.carts
+    assert not (await ex.execute("add_to_cart", {"product_id": TOUR})).is_error  # next round
+
+
+async def test_a_cart_line_id_counts_as_seen(store):
+    # The tent goes in by its product id and sits in the cart as variant 201; adding that id
+    # again (from the cart panel or the session context) must pass the provenance gate.
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent"})
+    await ex.execute("add_to_cart", {"product_id": TENT})
+    again = await ex.execute("add_to_cart", {"product_id": "gid://shopify/ProductVariant/201"})
+    assert not again.is_error
+    lines = next(iter(store.carts.values()))["line_items"]
+    assert [(li["item"]["id"], li["quantity"]) for li in lines] == [("gid://shopify/ProductVariant/201", 2)]
+    # Variant ids from a product lookup are seen too.
+    await ex.execute("get_product_details", {"product_id": TEE})
+    assert not (await ex.execute("add_to_cart", {"product_id": TEE_S})).is_error
+
+
+async def test_a_shopify_error_reaches_the_agent_in_the_stores_words(store, monkeypatch):
+    # Live: any Shopify error became "add_to_cart is temporarily unavailable", and the agent
+    # told the shopper the cart wasn't working.
+    def broken_cart(body, args, request):
+        error = {"type": "error", "code": "invalid_input", "content": "Quantity must be at most 10"}
+        return store._result(body, {"messages": [error]}, True)
+
+    monkeypatch.setattr(store, "_create_cart", broken_cart)
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent"})
+    out = await ex.execute("add_to_cart", {"product_id": TENT})
+    assert out.is_error and "Quantity must be at most 10" in out.result_text
+    assert "temporarily unavailable" not in out.result_text
+
+
+@pytest.mark.parametrize(
+    ("question", "faq"),
+    [
+        ("contact", "How do I contact Trailhead customer support?"),
+        ("I want to talk to a human", "How do I contact Trailhead customer support?"),
+        ("exchange", "Can I refund or exchange a product?"),
+        ("can I swap it for another size", "Can I refund or exchange a product?"),
+    ],
+)
+async def test_policy_questions_in_other_words_still_find_the_faq(store, question, faq):
+    # Live: "how do I contact support" found the contact FAQ but "contact" found nothing,
+    # and "exchange" found nothing although the refund-or-exchange FAQ exists.
+    backend = make_backend(store)
+    found = await backend.search_policies(None, question)
+    assert found and found[0].title == faq
+
+
+async def test_a_ranking_word_with_no_ranking_data_falls_back_to_relevance(store):
+    # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales data.
+    backend = make_backend(store)
+    filters = SearchFilters(sort="rating")
+    assert [p.title for p in await backend.search_products(None, "bestseller", filters)]
+    tents = await backend.search_products(None, "best selling tent")
+    assert [p.title for p in tents] == ["Summit 2P Backpacking Tent"]
+
+
+async def test_an_empty_cart_is_in_the_stores_currency():
+    store = FakeShopifyStore()
+    backend = make_backend(store)
+    session = ShoppingSessionContext(session_id="s1", user_id="guest-1", now=datetime(2026, 10, 6, 9))
+    assert (await backend.get_cart(session)).currency == "USD"
+
+    class SgdStore(FakeShopifyStore):
+        def _handle(self, request):
+            if request.url.path == "/meta.json":
+                return httpx.Response(
+                    200, json={"country": "SG", "currency": "SGD", "ships_to_countries": ["SG"]}
+                )
+            return super()._handle(request)
+
+    assert (await make_backend(SgdStore()).get_cart(session)).currency == "SGD"

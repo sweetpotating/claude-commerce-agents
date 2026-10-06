@@ -203,11 +203,18 @@
   const scrollDown = () => { scroller.scrollTop = scroller.scrollHeight; };
   const add = (node) => { log.appendChild(node); scrollDown(); return node; };
   // Plain text with **bold** only; everything else is escaped by textContent.
+  // Plain text with **bold**, and email addresses as mailto links (the store's contact).
+  const EMAIL = /([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
+  const addText = (node, text) => text.split(EMAIL).forEach((part, i) => {
+    if (!part) return;
+    if (i % 2) { const a = el("a", null, part); a.href = `mailto:${part}`; node.appendChild(a); }
+    else node.appendChild(document.createTextNode(part));
+  });
   const setText = (node, text) => {
     node.replaceChildren();
     text.split(/(\*\*[^*]+\*\*)/g).forEach((part) => {
       if (part.startsWith("**") && part.endsWith("**") && part.length > 4) node.appendChild(el("strong", null, part.slice(2, -2)));
-      else if (part) node.appendChild(document.createTextNode(part));
+      else if (part) addText(node, part);
     });
   };
 

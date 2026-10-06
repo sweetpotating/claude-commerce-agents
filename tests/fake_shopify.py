@@ -60,6 +60,17 @@ _FAQS = [
     ),
     (("credit",), "Do you accept store credit?", "The store accepts store credit."),
     (("shipping", "ship"), "What is your shipping policy?", "Orders ship in 3-7 business days."),
+    # As live: found only from close wording ("contact" or "exchange" alone find nothing).
+    (
+        ("contact customer support", "how do i contact"),
+        "How do I contact Trailhead customer support?",
+        "Email help@trailhead.example. We reply within 1-2 business days.",
+    ),
+    (
+        ("refund or exchange", "exchange a product"),
+        "Can I refund or exchange a product?",
+        "Yes, within 30 days of delivery for unused items.",
+    ),
 ]
 
 
@@ -101,7 +112,8 @@ def _product(pid: str, variants: list[str]) -> dict[str, Any]:
 
 
 class FakeShopifyStore:
-    def __init__(self) -> None:
+    def __init__(self, *, meta: bool = True) -> None:
+        self.meta = meta  # serve /meta.json (a password page can hide it)
         self.carts: dict[str, dict[str, Any]] = {}
         self.calls: list[tuple[str, dict[str, Any], dict[str, str]]] = []
 
@@ -109,6 +121,11 @@ class FakeShopifyStore:
         return httpx.MockTransport(self._handle)
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/meta.json":  # live shape, trimmed
+            if not self.meta:
+                return httpx.Response(404)
+            meta = {"country": "US", "currency": "USD", "ships_to_countries": sorted(MARKET)}
+            return httpx.Response(200, json={"name": "Trailhead", "domain": SHOP, **meta})
         body = json.loads(request.content or b"{}")
         if request.url.host == "api.shopify.com":
             return httpx.Response(200, json={"access_token": "header.payload.sig"})
@@ -136,7 +153,7 @@ class FakeShopifyStore:
         hits = [
             {k: v for k, v in _product(pid, []).items() if k != "variants"}
             for pid, spec in _PRODUCTS.items()
-            if any(w in spec["title"].lower() for w in words)
+            if not words or any(w in spec["title"].lower() for w in words)  # live: "" lists all
         ]
         price = args["catalog"].get("filters", {}).get("price", {})
         if "max" in price:

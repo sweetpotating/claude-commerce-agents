@@ -122,6 +122,18 @@ DISCOVERY_NOTES = (
     "tours'."
 )
 
+# Where a shopper reaches a person. The store's contact FAQ gives the same address.
+CONTACT_EMAIL = os.environ.get("STORE_CONTACT_EMAIL", "tanyueting96@gmail.com")
+
+HANDOFF_NOTES = (
+    "A person at the store is always reachable: when the customer asks for a human, a person, "
+    "support, or a manager, wants to complain, or needs something you cannot do here (an "
+    "order already placed, a refund, a change to a booking, a problem with a delivery), say "
+    f"a person at the store can help and give the email {CONTACT_EMAIL}; read the store's "
+    "contact FAQ with search_policies for how soon they reply. Never say there is no way to "
+    "reach a person, and do not show products in that reply unless they ask."
+)
+
 BRAND_VOICE = (
     "warm, candid, and practical: plain about trade-offs, upfront about fees and what is "
     "left, and never in a hurry to sell"
@@ -132,7 +144,9 @@ def industry_config_overrides() -> dict[str, Any]:
     """Settings layered over the Shopify config (``shopify_agent_config``)."""
     return {
         "brand_voice": BRAND_VOICE,
-        "domain_search_notes": os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES) + " " + DISCOVERY_NOTES,
+        "domain_search_notes": " ".join(
+            (os.environ.get("STORE_SEARCH_NOTES", SEARCH_NOTES), DISCOVERY_NOTES, HANDOFF_NOTES)
+        ),
         # Plan comparisons need every tier in one search (the telecom demo's setting).
         "max_search_results": 25,
         # The ticketing demo's cap: no one buys 40 of a ticket or a tour seat by mistake.
