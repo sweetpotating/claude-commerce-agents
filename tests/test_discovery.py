@@ -22,6 +22,9 @@ from my_store.discovery import shopping_request
         "what phone plan should I get?",
         "do you sell eSIMs?",
         "something for a rainy day in Tokyo",
+        "I'm going to Japan",
+        "any ideas for my mum?",
+        "what's good for a first-time visitor to Singapore?",
     ],
 )
 def test_shopping_requests_search_first(text):
