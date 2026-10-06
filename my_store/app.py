@@ -16,6 +16,7 @@ session store (Redis/DB), rate limits, and signature checks on the payment webho
 
 from __future__ import annotations
 
+import os
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -37,19 +38,27 @@ from shopping_agent.serialization import cart_payload
 from shopping_agent_runtime import ShoppingAgent
 
 from .backend import MyStoreBackend
+from .shopify_backend import ShopifyUCPBackend, shopify_agent_config
 
 SKILLS_DIR = Path(__file__).resolve().parents[1] / "vendor/commerce-agents/shopping-agent/skills"
 
-backend = MyStoreBackend()
-agent = ShoppingAgent(
-    backend=backend,
-    skills_dir=SKILLS_DIR,
-    config=ShoppingAgentConfig(
+# STORE_BACKEND=shopify (with SHOPIFY_STORE_DOMAIN set) runs on a real Shopify store;
+# otherwise the sample catalog.json store.
+if os.environ.get("STORE_BACKEND") == "shopify":
+    backend: MyStoreBackend | ShopifyUCPBackend = ShopifyUCPBackend.from_env()
+    config = shopify_agent_config()
+else:
+    backend = MyStoreBackend()
+    config = ShoppingAgentConfig(
         brand_name="Trailhead Supply",
         assistant_name="Trail Guide",
         brand_voice="friendly, outdoorsy, and brief",
         # Switch off systems you don't have, e.g. enable_orders=False on a referral surface.
-    ),
+    )
+agent = ShoppingAgent(
+    backend=backend,
+    skills_dir=SKILLS_DIR,
+    config=config,
     memory_store=InMemoryMemoryStore(),  # swap for a durable MemoryStore
 )
 
@@ -129,7 +138,10 @@ async def get_cart(x_session_id: str | None = Header(default=None)) -> dict:
 @app.post("/webhooks/checkout-complete/{token}")
 async def checkout_complete(token: str) -> dict:
     """Your payment provider calls this when the hosted checkout is paid.
-    TODO(live): verify the provider's signature before trusting it."""
+    TODO(live): verify the provider's signature before trusting it. On Shopify, subscribe
+    to Shopify's order webhooks instead and queue the same app event."""
+    if not isinstance(backend, MyStoreBackend):
+        raise HTTPException(404, "Not used with this backend")
     session_id = backend.checkout_tokens.get(token, (None, None))[0]
     order = backend.record_paid_order(token)
     if order is None:

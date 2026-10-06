@@ -143,18 +143,61 @@ claude
 It interviews you about your stack, plays back a plan, and generates the backend, host, and
 evals; `/add-commerce-flow`, `/author-commerce-evals`, and `/review-commerce-agent` follow on.
 
-## 4. Files in this repo
+## 4. Running on a Shopify store
+
+`my_store/shopify_backend.py` is a `StorefrontBackend` over one store's Universal Commerce
+Protocol (UCP) tools. Turn it on with environment variables (see `.env.example`):
+
+```bash
+export STORE_BACKEND=shopify SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
+export ANTHROPIC_API_KEY=...
+uvicorn my_store.app:app --port 8000
+```
+
+| Agent capability | Shopify tool | Needs |
+|---|---|---|
+| Search, product details, sizes/colours | `search_catalog`, `get_product` on `https://{shop}/api/ucp/mcp` | Agent profile URL only |
+| Cart | `create_cart`, `get_cart`, `update_cart`, `cancel_cart` | Agent profile URL only |
+| Checkout link | `create_checkout` → `continue_url` | `SHOPIFY_CLIENT_ID`/`SECRET`; without them the cart's own `continue_url` is used |
+| Returns, shipping, FAQ questions | `search_shop_policies_and_faqs` on `https://{shop}/api/mcp` | Nothing |
+| Order history, delivery options | Switched off (`shopify_agent_config()`) | Order MCP only sees orders the agent itself completed; delivery is chosen in checkout |
+
+The buyer always pays on Shopify's own checkout page. Every call carries your agent
+profile: the default is Shopify's example profile, which is fine for development; host your
+own (shopify.dev/docs/agents/profiles) before going live.
+
+`tests/fake_shopify.py` is a stand-in store built from the request and response examples
+on shopify.dev; `pytest` runs the backend against it through the agent's real tool
+executor. It has not been run against a live store yet: do that first (below).
+
+### First live test checklist
+
+1. Make a Shopify development store (free Partner account) and add a few products, one
+   with sizes or colours.
+2. `curl https://your-store.myshopify.com/.well-known/ucp` returns the store's UCP profile.
+3. Run the app with `STORE_BACKEND=shopify` and ask for a product, pick a size, add it, and
+   ask to check out. The checkout card's link should open Shopify checkout with the cart.
+4. If something fails, the server log names the Shopify tool and its error message; the
+   parsing that is most likely to need adjusting is cart line items (`_cart`) and the
+   policy answer (`search_policies`).
+5. Add `SHOPIFY_CLIENT_ID`/`SECRET` from Dev Dashboard → Catalogs → API key and re-test
+   checkout (now through `create_checkout`).
+
+## 5. Files in this repo
 
 | Path | What |
 |---|---|
 | `my_store/backend.py` | `MyStoreBackend(StorefrontBackend)`: the file you edit to connect your systems |
 | `my_store/catalog.json` | Fictional sample data: a tee with sizes (one out of stock), tents, a pad, policies, an order |
-| `my_store/app.py` | Minimal FastAPI host: `/api/session`, `/api/chat` (SSE), `/api/cart`, payment webhook |
+| `my_store/shopify_backend.py` | `ShopifyUCPBackend`: the same interface over a Shopify store's UCP tools |
+| `my_store/app.py` | Minimal FastAPI host: `/api/session`, `/api/chat` (SSE), `/api/cart`, payment webhook; `STORE_BACKEND=shopify` switches backends |
+| `tests/` | `ShopifyUCPBackend` tests against a simulated Shopify store (`pytest`) |
+| `.env.example` | Every setting, with the Shopify ones |
 | `scripts/walkthrough.py` | Offline e2e run through the real executor and gates |
 | `docs/walkthrough-output.txt` | What that run prints |
 | `setup.sh` | Clones the reference into `vendor/` and installs it |
 
-## 5. Reading order for the reference repo
+## 6. Reading order for the reference repo
 
 1. `README.md`, then `docs/backends.md` (integration), `docs/safety.md` (what's enforced)
 2. `shopping-agent/core/shopping_agent/backend.py` and `types.py` (the contract)

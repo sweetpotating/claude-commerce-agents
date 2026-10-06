@@ -1,0 +1,143 @@
+"""ShopifyUCPBackend against the fake store, driven through the reference tool executor so
+the agent's gates (provenance, options) run exactly as they do in a live turn."""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+import httpx
+import pytest
+from commerce_common.memory import InMemoryMemoryStore
+from commerce_common.skills import SkillRegistry
+from shopping_agent import ShoppingSessionContext, ShoppingSessionState
+from shopping_agent.executor import ShoppingToolExecutor, build_memory
+from shopping_agent.gates import OPTIONS_GATE, PROVENANCE_GATE
+
+from my_store.shopify_backend import ShopifyUCPBackend, shopify_agent_config
+
+from .fake_shopify import SHOP, FakeShopifyStore
+
+TEE, TEE_S, TEE_M, TEE_L = (
+    "gid://shopify/Product/1",
+    "gid://shopify/ProductVariant/101",
+    "gid://shopify/ProductVariant/102",
+    "gid://shopify/ProductVariant/103",
+)
+TENT = "gid://shopify/Product/2"
+
+
+@pytest.fixture
+def store() -> FakeShopifyStore:
+    return FakeShopifyStore()
+
+
+def make_backend(store: FakeShopifyStore, **kwargs) -> ShopifyUCPBackend:
+    return ShopifyUCPBackend(
+        SHOP,
+        agent_profile_url="https://agent.example/ucp-profile.json",
+        utm_source="claude_agent",
+        http=httpx.AsyncClient(transport=store.transport()),
+        **kwargs,
+    )
+
+
+def make_executor(backend: ShopifyUCPBackend) -> ShoppingToolExecutor:
+    config = shopify_agent_config(brand_name="Trailhead")
+    return ShoppingToolExecutor(
+        backend=backend,
+        config=config,
+        skills=SkillRegistry([]),
+        session=ShoppingSessionContext(session_id="s1", user_id="guest-1", now=datetime(2026, 10, 6, 9)),
+        state=ShoppingSessionState(),
+        memory=build_memory(config, InMemoryMemoryStore()),
+    )
+
+
+async def test_discovery_to_checkout_through_the_executor(store):
+    backend = make_backend(store, client_id="id", client_secret="secret")
+    ex = make_executor(backend)
+
+    # Nothing seen yet: the provenance gate holds the write before Shopify is called.
+    held = await ex.execute("add_to_cart", {"product_id": TENT})
+    assert held.blocked == PROVENANCE_GATE
+    assert not store.calls
+
+    # Discovery: prices arrive in minor units and become dollars; the tent is a plain product.
+    found = await ex.execute("search_products", {"query": "merino tee tent", "filters": {"max_price": 250}})
+    assert "Ridgeline Merino Tee" in found.result_text and '"price": 48.0' in found.result_text
+    assert '"options": {"Size": ["S", "M", "L"]}' in found.result_text
+    assert '"Default Title"' not in found.result_text
+
+    # The family can't be added; details fill in every size, not just the one Shopify returned.
+    assert (await ex.execute("add_to_cart", {"product_id": TEE})).blocked == OPTIONS_GATE
+    details = await ex.execute("get_product_details", {"product_id": TEE})
+    for vid in (TEE_S, TEE_M, TEE_L):
+        assert vid in details.result_text
+    assert "<b>" not in details.result_text
+
+    # Out of stock is refused with the in-stock sizes named; nothing is written.
+    oos = await ex.execute("add_to_cart", {"product_id": TEE_M})
+    assert oos.is_error and TEE_S in oos.result_text and TEE_L in oos.result_text
+    assert not store.carts
+
+    # Adds: a variant, then a single-variant product resolved to its variant id.
+    assert not (await ex.execute("add_to_cart", {"product_id": TEE_L, "quantity": 2})).is_error
+    added = await ex.execute("add_to_cart", {"product_id": TENT})
+    assert "subtotal 333.00 USD" in added.result_text
+    cart = next(iter(store.carts.values()))
+    assert {li["item"]["id"]: li["quantity"] for li in cart["line_items"]} == {
+        TEE_L: 2,
+        "gid://shopify/ProductVariant/201": 1,
+    }
+
+    # update_cart is a full replace: changing one line keeps the other.
+    await ex.execute("update_cart_item", {"product_id": TEE_L, "quantity": 1})
+    assert len(next(iter(store.carts.values()))["line_items"]) == 2
+
+    # Checkout: an authenticated create_checkout; its continue_url goes on the card only.
+    out = await ex.execute("checkout", {})
+    card = next(e for e in out.events if e.type == "ui").data["payload"]
+    url = card["handoffs"][0]["url"]
+    assert url.startswith(f"https://{SHOP}/checkouts/cn/") and url.endswith("?utm_source=claude_agent")
+    assert url not in out.result_text
+    checkout_call = next(c for c in store.calls if c[0] == "create_checkout")
+    assert checkout_call[2]["authorization"] == "Bearer header.payload.sig"
+
+    # Every UCP call carried the agent profile.
+    assert all(
+        c[1]["meta"]["ucp-agent"]["profile"] == "https://agent.example/ucp-profile.json"
+        for c in store.calls
+        if c[0] != "search_shop_policies_and_faqs"
+    )
+
+
+async def test_checkout_without_credentials_uses_the_cart_link(store):
+    backend = make_backend(store)
+    ex = make_executor(backend)
+    await ex.execute("search_products", {"query": "tent"})
+    await ex.execute("add_to_cart", {"product_id": TENT})
+    out = await ex.execute("checkout", {})
+    url = next(e for e in out.events if e.type == "ui").data["payload"]["handoffs"][0]["url"]
+    assert url.startswith(f"https://{SHOP}/cart/c/")
+    assert not any(c[0] == "create_checkout" for c in store.calls)
+
+
+async def test_removing_the_last_line_cancels_the_cart(store):
+    ex = make_executor(make_backend(store))
+    await ex.execute("search_products", {"query": "tent"})
+    await ex.execute("add_to_cart", {"product_id": TENT})
+    removed = await ex.execute("remove_from_cart", {"product_id": "gid://shopify/ProductVariant/201"})
+    assert not removed.is_error
+    assert not store.carts and any(c[0] == "cancel_cart" for c in store.calls)
+
+
+async def test_policies_come_from_the_storefront_endpoint(store):
+    ex = make_executor(make_backend(store))
+    out = await ex.execute("search_policies", {"query": "returns"})
+    assert "30 days" in out.result_text
+
+
+def test_config_switches_off_what_shopify_has_no_tool_for():
+    absent = shopify_agent_config().absent_tools()
+    assert {"get_orders", "get_order_status", "get_fulfillment_options"} <= absent
+    assert "checkout" not in absent
