@@ -103,6 +103,11 @@ def chip_tapped(state: ShoppingSessionState) -> None:
     _chip_turns.add(id(state))
 
 
+def is_cart_or_signoff(text: str) -> bool:
+    """A chip or message that acts on the cart or closes the chat, not a product search."""
+    return _skip(text)
+
+
 def _skip(text: str) -> bool:
     padded = f" {text.lower().strip()} "
     return bool(_SKIP_START.match(text)) or any(cue in padded for cue in SKIP_CUES)
@@ -165,6 +170,20 @@ def fallback_chips(titles: list[str], limit: int = 4) -> list[str]:
             break
         chips.append(starter)
     return chips[:limit]
+
+
+def fallback_products(state: ShoppingSessionState, limit: int = 4) -> dict[str, Any] | None:
+    """Cards for a tapped chip whose reply showed no products: the products this session
+    found most recently. Live, chips the model offered ("Show more Singapore tours", "Show
+    jewelry") found nothing new and the reply was text only, a dead end after a tap."""
+    recent = [p for p in reversed(state.seen_products.values()) if not p.variant_of][:limit]
+    if not recent:
+        return None
+    return {
+        "title": "Closest matches",
+        "layout": "carousel",
+        "items": [{"product": p.model_dump(exclude_none=True)} for p in recent],
+    }
 
 
 DISCOVERY_RULE = GroundingRule("discovery", "search_products", _discovery)

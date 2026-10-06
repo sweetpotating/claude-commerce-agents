@@ -3,8 +3,7 @@
     export ANTHROPIC_API_KEY=...   # or STORE_AGENT_ANTHROPIC_API_KEY (see below)
     uvicorn my_store.app:app --port 8000
 
-    curl -s -XPOST localhost:8000/api/session -H 'content-type: application/json' \
-         -d '{"user_id": "demo-user"}'
+    curl -s -XPOST localhost:8000/api/session -H 'content-type: application/json' -d '{}'
     curl -N -XPOST localhost:8000/api/chat -H "X-Session-Id: <id>" \
          -H 'content-type: application/json' -d '{"message": "a 2-person tent under $250"}'
 
@@ -100,7 +99,11 @@ STATIC = Path(__file__).parent / "static"
 
 
 class StartSession(BaseModel):
-    user_id: str = Field(default="demo-user", max_length=64)  # TODO(live): from your auth
+    """No fields the host trusts. Every chat used to default to user_id "demo-user", so all
+    anonymous shoppers shared one long-term memory: in the live UAT a fresh chat answered
+    "you're planning a trip to Japan" from another shopper's session. A client-sent id is
+    ignored too, since without sign-in anyone could claim someone else's.
+    TODO(live): take the user id from your auth (e.g. a signed-in Shopify customer)."""
 
 
 class ChatRequest(BaseModel):
@@ -157,7 +160,7 @@ async def healthz() -> dict:
 async def start_session(body: StartSession, request: Request) -> dict:
     guards.session_limiter.check(guards.client_ip(request), "Too many new chats. Please wait a bit.")
     drop_idle_sessions()
-    s = Session(session_id=secrets.token_urlsafe(24), user_id=body.user_id)
+    s = Session(session_id=secrets.token_urlsafe(24), user_id=f"guest-{secrets.token_urlsafe(12)}")
     SESSIONS[s.session_id] = s
     return {"session_id": s.session_id}
 
@@ -181,13 +184,18 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
     else:
         s.messages.append({"role": "user", "content": body.message})
     ctx = context(s, body.page)
-    if body.source == "chip":
+    chip = body.source == "chip"
+    if chip:
         discovery.chip_tapped(s.state)
+    # A cart chip ("Add ...", "Check out") needs no product cards after it.
+    search_chip = chip and not discovery.is_cart_or_signoff(body.message)
 
     async def turn():
         # Every reply ends with chips: when the model gave none, the host adds them from the
         # products this reply showed, so the shopper always has a next step to tap.
-        has_chips, titles = False, []
+        # A tapped chip always leads to products: when its reply showed none, the host adds
+        # the closest ones found, above the chips (which it holds back until then).
+        has_chips, titles, held = False, [], []
         try:
             # Events: text_delta, tool_call, ui (render the component), cart_update, turn_complete
             async for event in agent.stream_turn(s.messages, ctx, s.state):
@@ -195,12 +203,22 @@ async def chat(body: ChatRequest, request: Request, x_session_id: str | None = H
                     component, payload = event.data.get("component"), event.data.get("payload") or {}
                     has_chips |= component == "suggestions"
                     titles += discovery.product_titles(component, payload)
+                    if search_chip and component == "suggestions":
+                        held.append(event)
+                        continue
                 yield to_sse(event)
             failed = False
         except Exception:
             logger.exception("chat turn failed")
             yield to_sse(AgentEvent.error("Something went wrong. Please try again."))
             failed = True
+        if search_chip and not titles and not failed:
+            cards = discovery.fallback_products(s.state)
+            if cards:
+                titles += [item["product"]["title"] for item in cards["items"]]
+                yield to_sse(AgentEvent.ui("products", cards))
+        for event in held:
+            yield to_sse(event)
         if not has_chips:
             chips = discovery.fallback_chips(titles)
             yield to_sse(AgentEvent.ui("suggestions", {"suggestions": chips}))

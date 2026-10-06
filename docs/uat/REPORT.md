@@ -55,6 +55,78 @@ No turn emitted an `error` event or dropped. The slowest turn took 14.1s, and th
 silence between events was 5.2s. The keep-alive still matters on the phone path through
 Render's proxy; this local run could not test that path.
 
+#### i12: the in-chat product page
+
+| Check | Result | Notes |
+|---|---|---|
+| `POST /api/product`, Logo Tee | **Pass** | 1 image (the store has one per product), description, variants S and M, product URL. Adding variant S returned 200. |
+| `POST /api/product`, Mt Fuji Day Trip | **Pass** | 1 image, description, no variants. Adding the plain product returned 200. |
+| Chromium: View details → sheet → size M → Add to cart → checkout bar | **Pass** | The sheet opened with no page change (URL stayed `/`, no navigation, no JS errors). The bar read "Checkout · 1 item · SGD 29.90". Screenshot: [`product-sheet.png`](product-sheet.png) |
+
+What looked wrong on real data:
+- **Run-on sentences (fixed).** Shopify's description "html" has no tags and no space
+  between sentences ("with lunch.Experience with…"). `_text` now adds the space, and a test
+  covers it.
+- **Store data.** Descriptions are one block of boilerplate, with "Product details …" items
+  run together and a "SKU: IK-RE-TEE-S" on every tee size.
+- **Store data.** The tee's options list S, M and L, but Shopify no longer returns an L
+  variant, so the sheet offers only S and M while the text still says "L is sold out".
+- No HTML leaked into the text, and no photos were missing.
+
+#### i13: products on the first reply (forced first search), 10 fresh sessions
+
+| Opener | First tool | Product component | Real ids | Time |
+|---|---|---|---|---|
+| I need a gift | search_products | products | 5 | 9.3s |
+| help me plan a trip | search_products | plan | 3 | 20.0s |
+| something fun for the weekend | search_products | products | 4 | 12.4s |
+| what phone plan should I get? | search_products | plan_matrix | 2 | 11.3s |
+| Compare two tours | search_products | comparison | 2 | 14.7s |
+| any ideas for my mum? | search_products | products | 4 | 9.4s |
+| what's good for a first-time visitor to Singapore? | search_products | products | 4 | 11.8s |
+| I'm going to Japan | search_products | plan | 4 | 25.7s |
+| cheap stuff under 20 | search_products | products | 4 | 11.7s |
+| do you sell travel adapters? | search_products | products | 1 | 7.0s |
+
+**All 10 of 10 showed products on the first reply.** None ended on only a question.
+
+Control turns:
+- "how many days do I have to return an item?" → `search_policies` first.
+- "add it to my cart" → `add_to_cart` first, with no forced search.
+- "thanks" → no tool, and the host's fallback chips.
+
+The forced search adds a round, so the longer plans took 20–26s. Their longest gap still
+stayed well under 10s.
+
+**Found and fixed: every shopper shared one memory.**
+- `chat.html` starts every chat with `{}`, so every visitor got the `user_id` "demo-user",
+  and long-term memory is stored per user.
+- Live, a brand-new chat answered "you're planning a trip to Japan", from another session.
+  The adapter opener also said "since you're planning that trip".
+- Fixed: `/api/session` gives each chat its own `guest-…` id and ignores any client-sent id.
+  Without sign-in, anyone could otherwise claim someone else's id.
+- After the fix, a fresh chat says it has nothing saved, and memory still works within a
+  chat. A test covers it.
+
+#### i14: chips
+
+- **46 of 46** recorded round-(i) chat turns ended with a `suggestions` event: 45 from the
+  model and 1 from the host fallback ("thanks"). None was vague ("Tell me more", "Anything
+  else?").
+- **First tap test: 4 of 6 chips** from real replies, sent with `"source": "chip"`, showed
+  products.
+- **The two failures.** "Show more Singapore activities" had nothing more to show. "Search
+  for spa or wellness gifts" asked for a category the store doesn't carry. Both replies were
+  honest but text only.
+- **Fixes.** `DISCOVERY_NOTES` now says "Show more X" needs more X, a category chip needs a
+  result in that category, and an empty search still shows the closest products. The model
+  still sometimes offered such chips ("Show jewelry or accessories", "Show more Singapore
+  tours"), so the host now enforces it: a search chip whose reply shows no products gets
+  "Closest matches" cards above its chips. Cart and sign-off chips are excluded, and tests
+  cover both cases.
+- **After the fixes: 9 of 9 chip taps showed products with real ids.** That covers every
+  non-"Add" chip from the mum and Singapore openers, plus the earlier failures.
+
 ## Findings and fixes
 
 1. **Every physical product was "sold out" at the cart (fixed by configuration).**
@@ -146,6 +218,8 @@ Render's proxy; this local run could not test that path.
 
 ## Still open
 
+- **Chip prices in dollars.** Some chips still say "under $40" or "under $50" although the
+  catalog is in SGD.
 - **The trip reply sometimes describes products before searching.** In round i1, the first
   sentence promised "a guided walking tour, a museum pass" before any search. The plan that
   followed used real Singapore products. This is the model's pre-tool preamble.

@@ -64,3 +64,16 @@ def test_app_serves_the_widget_and_history():
     turns = client.get("/api/history", headers={"x-session-id": sid}).json()["turns"]
     assert turns == [{"role": "user", "text": "a tent"}, {"role": "assistant", "text": "Here are two."}]
     assert client.get("/api/history", headers={"x-session-id": "nope"}).status_code == 401
+
+
+def test_each_anonymous_chat_gets_its_own_memory_owner():
+    # Live UAT: every chat was "demo-user", so one shopper's saved facts reached the next.
+    from fastapi.testclient import TestClient
+
+    from my_store import app as host
+
+    client = TestClient(host.app)
+    first = client.post("/api/session", json={}).json()["session_id"]
+    second = client.post("/api/session", json={"user_id": host.SESSIONS[first].user_id}).json()["session_id"]
+    owners = {host.SESSIONS[first].user_id, host.SESSIONS[second].user_id}
+    assert len(owners) == 2 and "demo-user" not in owners

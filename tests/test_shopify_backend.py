@@ -13,7 +13,7 @@ from shopping_agent import ShoppingSessionContext, ShoppingSessionState
 from shopping_agent.executor import ShoppingToolExecutor, build_memory
 from shopping_agent.gates import OPTIONS_GATE, PROVENANCE_GATE
 
-from my_store.shopify_backend import SHOPIFY_PROMPT_NOTES, ShopifyUCPBackend, shopify_agent_config
+from my_store.shopify_backend import SHOPIFY_PROMPT_NOTES, ShopifyUCPBackend, _text, shopify_agent_config
 
 from .fake_shopify import SHOP, FakeShopifyStore
 
@@ -242,3 +242,13 @@ def test_shopify_notes_reach_the_prompt_whatever_the_search_notes():
     assert SHOPIFY_PROMPT_NOTES in shopify_agent_config().domain_search_notes
     custom = shopify_agent_config(domain_search_notes="We sell tours.").domain_search_notes
     assert custom.startswith("We sell tours.") and SHOPIFY_PROMPT_NOTES in custom
+
+
+def test_descriptions_get_the_space_shopify_leaves_out_between_sentences():
+    # Live description html, verbatim apart from length: no tags, no space between sentences.
+    raw = {"html": "Guided coach tour with lunch.Experience with iKnowledge. Sizes S, M, L (L is out).Pick"}
+    assert (
+        _text(raw)
+        == "Guided coach tour with lunch. Experience with iKnowledge. Sizes S, M, L (L is out). Pick"
+    )
+    assert _text("Version 2.5 of e.g. iKnowledge") == "Version 2.5 of e.g. iKnowledge"

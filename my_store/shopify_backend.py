@@ -67,6 +67,8 @@ MAX_VARIANT_FETCHES = 30
 _ZERO_DECIMAL = {"JPY", "KRW", "VND", "CLP", "ISK", "UGX", "XAF", "XOF"}
 _UNAVAILABLE_CODES = ("out_of_stock", "insufficient_stock", "unavailable", "not_available", "sold_out")
 _TAG = re.compile(r"<[^>]+>")
+# Live descriptions join paragraphs with no tag or space ("with lunch.Experience with ...").
+_RUN_ON = re.compile(r"(?<=[a-z)\]])([.!?])(?=[A-Z])")
 # search_shop_policies_and_faqs answers only questions close to the store's own FAQ wording
 # and returns [] otherwise (live: "service fees", "ticket transfer", even "refund"). These
 # phrasings reach the store's general policies, which often settle the question anyway.
@@ -110,7 +112,8 @@ def _text(description: Any) -> str | None:
         description = description.get("plain") or description.get("html")
     if not description:
         return None
-    return " ".join(html.unescape(_TAG.sub(" ", str(description))).split()) or None
+    text = " ".join(html.unescape(_TAG.sub(" ", str(description))).split())
+    return _RUN_ON.sub(r"\1 ", text) or None
 
 
 class ShopifyUCPBackend(StorefrontBackend):
