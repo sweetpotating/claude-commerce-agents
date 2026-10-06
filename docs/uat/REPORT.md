@@ -20,6 +20,7 @@ non-shipping. Prices are in SGD. One product has options: the Logo Tee in sizes 
 | d | Ticketing: "Can I transfer or resell a booking, and are there any service fees?" | **Pass** after fix | `suggestions`. Answer comes from `search_policies`; no fees invented. |
 | e1 | Guardrail: 20 Universal Studios tickets | **Pass** | Capped at 8; the agent said so ("only add 8… per-item limit"). |
 | e2 | Guardrail: "Do you sell surfboards?" | **Pass** | Searched "surfboard" then "surf", said the store doesn't carry them, named no other retailer. |
+| f | Discovery: "Plan a Tokyo trip" (then "Solo, first-time visitor, 4 days next month") | **Pass**, with notes below | Turn 1 asked a clarifying question; none of its chips was a product search. Turn 2: `plan` with the hotel voucher, Japan eSIM and Mt Fuji day trip, each linked to `/products/{handle}`. The one step the store can't cover ("City exploring") has no products. One chip is a product search ("Search for Tokyo food tours"). |
 | UI | `chat.html` travel turn in headless Chromium | **Pass** | No `<pre>` and no raw JSON. Itinerary and plan cards render. Screenshot: [`travel-turn.png`](travel-turn.png) |
 | R | Render deploy `/healthz` and one chat turn | **Not run** | This environment's network policy rejects `iknowledge-shopping-agent.onrender.com`. |
 
@@ -72,13 +73,30 @@ pass (19 tests).
      the file's `-e ./…` paths are relative.
    - Fixed: `setup.sh` and CLAUDE.md now install from inside the vendor directory. The Render
      build already did this.
-7. **The fake store now matches live response shapes.**
+7. **Product links use the real handle (test shape fixed).**
+   - The live catalog gives each product a `handle` and no `url`, so `product_url` is
+     `https://{shop}/products/{handle}`, not the storefront-search fallback.
+   - The fake store had no `handle`, so tests only covered the fallback. It now has one, and
+     the tests check the `/products/…` link.
+8. **The fake store now matches live response shapes.**
    - Variants have no `seller`, `availability` is just `{available}`, and option values carry
      only `label`.
    - Added a non-shipping product (an e-voucher) and FAQ search that only answers close
      questions.
 
 ## Still open
+
+- **Product pages are behind the storefront password.** Every `/products/…` link (the new
+  "View details" links) redirects to `/password`, so shoppers can't open them. The agent's
+  API calls aren't affected, and the checkout handoff link goes straight to Shopify checkout.
+  To fix, remove the password under Online Store > Preferences.
+- **Discovery searches are still sometimes too long.** The Tokyo run tried "Tokyo walking
+  tour" and "Tokyo temple tour" before "Tokyo", even with the short-keyword note.
+- **The deploy branch is unconfirmed.** Another session reported that Render deploys from
+  `claude/commerce-agents-study-rdoe5a`, not the `render.yaml` branch, and asked for pushes to
+  go there too. This session pushed only to `claude/festive-sagan-q8rglv`. Confirm the branch in
+  the Render dashboard before anyone pushes to the other branch. Also, raw JSON on the live
+  site would come from an older build: locally, the itinerary and plan turns render as cards.
 
 - **The owner's environment variable.** This cloud environment sets
   `SHOPIFY_BUYER_COUNTRY=US`, so a plain `python -m scripts.shopify_smoke` fails at add to cart.

@@ -83,6 +83,7 @@ def _product(pid: str, variants: list[str]) -> dict[str, Any]:
     return {
         "id": pid,
         "title": spec["title"],
+        "handle": spec["title"].lower().replace(" ", "-"),  # live: a handle, no url
         "description": spec["description"],
         "options": [
             {

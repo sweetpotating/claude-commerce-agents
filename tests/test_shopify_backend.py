@@ -70,6 +70,8 @@ async def test_discovery_to_checkout_through_the_executor(store):
     assert "Ridgeline Merino Tee" in found.result_text and '"price": 48.0' in found.result_text
     assert '"options": {"Size": ["S", "M", "L"]}' in found.result_text
     assert '"Default Title"' not in found.result_text
+    # Each product links to its storefront page by handle (live gives a handle, no url).
+    assert f"https://{SHOP}/products/ridgeline-merino-tee?utm_source=claude_agent" in found.result_text
 
     # The family can't be added; details fill in every size, not just the one Shopify returned.
     assert (await ex.execute("add_to_cart", {"product_id": TEE})).blocked == OPTIONS_GATE

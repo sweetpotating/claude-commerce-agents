@@ -94,7 +94,7 @@ async def test_plan_table_rows_come_from_the_catalog(executor):
 
 async def test_every_product_links_to_the_storefront(executor):
     found = await executor.execute("search_products", {"query": "merino tee tent"})
-    assert f"https://{SHOP}/search?q=Ridgeline+Merino+Tee" in found.result_text
+    assert f"https://{SHOP}/products/ridgeline-merino-tee" in found.result_text  # by handle, as live
     out = await executor.execute("present_plan_comparison", {"plan_ids": [TEE, TENT]})
     payload = next(e for e in out.events if e.type == "ui").data["payload"]
     assert all(p["attributes"]["product_url"].startswith(f"https://{SHOP}/") for p in payload["plans"])
