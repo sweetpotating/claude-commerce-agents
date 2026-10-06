@@ -84,7 +84,10 @@ DISCOVERY_NOTES = (
     "and spend the card on what the store does sell. After a text-only answer or a "
     "guide, show the products it points to with present_products when any match. Of "
     "the turn's suggestion chips, make at least one a concrete next product search "
-    "('Show more Tokyo day tours', 'Compare eSIM data plans')."
+    "('Show more Tokyo day tours', 'Compare eSIM data plans'), and offer chips only for "
+    "products and categories this session's results show the store carries. Product "
+    "cards have their own Choose options, Add to cart, and Checkout buttons, so the "
+    "shopper can buy straight from a card; you do not need to ask before they tap."
 )
 
 BRAND_VOICE = (
