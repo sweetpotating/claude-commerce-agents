@@ -95,12 +95,8 @@ def clean(
                 continue
             out.append(chip)
             continue
-        if (m := _COMPARE.match(chip)) and vocabulary:
-            parts = [p for p in _SPLIT.split(m.group(1)) if p.strip()]
-            if not all(_names(p, vocabulary) for p in parts):
-                continue
-            out.append(chip)
-            continue
+        if _COMPARE.match(chip) or re.search(r"\b(vs\.?|versus)\b", chip, re.IGNORECASE):
+            continue  # the owner's call: no comparison chips (a typed "compare" still works)
         naming = _words(chip) - _FILLER
         if vocabulary and naming and not naming & vocabulary:
             continue  # a search for nothing the store sells
