@@ -564,7 +564,11 @@
       if (!e.product) return;
       const card = productCard(e.product, e.best_for ? `Best for ${e.best_for}` : null);
       const body = card.querySelector(".body");
-      const btn = body.querySelector("button");
+      // The card's buttons sit in a wrapper inside .body: insert before that wrapper (the
+      // body's own child), not the button, or insertBefore throws and the whole card fails
+      // (live: every comparison with pros or cons broke this way).
+      let btn = body.querySelector("button");
+      while (btn && btn.parentNode !== body) btn = btn.parentNode;
       if (e.product_id && e.product_id === p.recommended_product_id) {
         card.classList.add("pick");
         body.insertBefore(el("span", "badge", "Recommended"), body.firstChild);

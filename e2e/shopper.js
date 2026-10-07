@@ -58,6 +58,7 @@ fs.mkdirSync(out, { recursive: true });
   // 4. Comparison across countries, with the facts table.
   await say("compare japan and malaysia trips");
   const rows = await page.$$eval("table.matrix tbody tr th", (n) => n.map((x) => x.textContent));
+  check("comparison card shows pros and cons", (await page.$$(".compare ul.pc")).length >= 2);
   check("comparison card with a facts table", rows.includes("Duration") && rows.includes("Price"), rows.join(", "));
   const cells = await page.$$eval("table.matrix", (t) => [...t[t.length - 1].querySelectorAll("td")].map((c) => c.textContent.trim()));
   check("every cell of the table has a value", cells.length >= 4 && cells.every((c) => c.length > 0), `${cells.length} cells`);

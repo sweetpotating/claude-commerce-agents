@@ -176,9 +176,9 @@ def compare_places(t: Turn):
     ]
     fuji = next(p for p in found if "fuji" in p["title"].lower())
     kl = next(p for p in found if "kuala lumpur" in p["title"].lower())
-    entries = [
-        {"product_id": fuji["product_id"], "best_for": "A full day with lunch"},
-        {"product_id": kl["product_id"], "best_for": "A half-day city taster"},
+    entries = [  # with pros and cons, as the real model sends them
+        {"product_id": fuji["product_id"], "best_for": "A full day with lunch", "pros": ["Lunch included"]},
+        {"product_id": kl["product_id"], "best_for": "A half-day city taster", "cons": ["No meal"]},
     ]
     return tool_calls_message(
         ("present_comparison", {"title": "Mt Fuji vs Kuala Lumpur", "entries": entries}),
