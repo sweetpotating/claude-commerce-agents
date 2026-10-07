@@ -179,7 +179,7 @@ def test_chips_are_checked():
         vocabulary=vocab,
         cart_titles=["Bookworm Ceramic Mug"],
     )
-    assert kept == ["Add Japan eSIM", "Show more Tokyo tours"]  # no comparison chips
+    assert kept == ["Add Japan eSIM", "Compare Tokyo tour and Japan eSIM", "Show more Tokyo tours"]
     assert chips.clean(["Check out", "Show more tours"], vocabulary=vocab, cart_titles=[]) == [
         "Show more tours"
     ]

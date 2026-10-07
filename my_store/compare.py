@@ -159,8 +159,8 @@ COMPARE_NOTES = (
     "by side, so name the one or two differences that decide the choice in one or two "
     "sentences of text with the card, never a card alone, and never compare on a fact no "
     "product states. Products from different countries or categories can be compared when "
-    "the shopper asks. Never offer a comparison as a suggestion chip; compare only when the "
-    "shopper asks."
+    "the shopper asks. A comparison chip names its items ('Compare Mt Fuji and Phuket "
+    "tours'), never just 'Compare two tours'."
 )
 
 

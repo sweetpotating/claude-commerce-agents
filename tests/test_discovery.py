@@ -89,8 +89,7 @@ def test_fallback_chips_come_from_the_products_shown():
     titles = product_titles("plan", payload)
     assert titles == ["Mt Fuji Day Trip from Tokyo", "Japan eSIM – 7 Days 10GB"]
     chips = fallback_chips(titles)
-    assert chips[0] == "Show more like Mt Fuji Day Trip"
-    assert not any(c.startswith("Compare") for c in chips)
+    assert chips[:2] == ["Compare Mt Fuji Day Trip and Japan eSIM", "Show more like Mt Fuji Day Trip"]
     assert len(chips) == 4 and len(fallback_chips([])) == 4
 
 

@@ -205,7 +205,7 @@ _PRODUCT_PATHS = {
     "plan_matrix": [("plans", None)],
 }
 
-STARTER_CHIPS = ["Show me your best picks", "Plan a 2-day trip", "Gift ideas", "Shop eSIMs"]
+STARTER_CHIPS = ["Show me your best picks", "Plan a 2-day trip", "Gift ideas", "Compare your plans"]
 
 
 def set_starters(collections: list[str]) -> None:
@@ -245,6 +245,8 @@ def fallback_chips(titles: list[str], limit: int = 4) -> list[str]:
     then general discovery. Every one leads to a product search when tapped."""
     seen = list(dict.fromkeys(_short(t) for t in titles if t))
     chips: list[str] = []
+    if len(seen) >= 2:
+        chips.append(f"Compare {seen[0]} and {seen[1]}")
     if seen:
         chips.append(f"Show more like {seen[0]}")
     for starter in STARTER_CHIPS:
