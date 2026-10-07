@@ -85,3 +85,25 @@ def test_healthz_names_the_commit():
 
     commit = TestClient(host.app).get("/healthz").json()["commit"]
     assert commit and len(commit) == 7
+
+
+async def test_the_exact_title_match_comes_first_even_when_shopify_ranks_it_out():
+    backend = make_backend(FakeShopifyStore())
+    await backend.catalog_index()
+    from shopping_agent import SearchFilters
+
+    others = [p for p in backend._index if "Kuala" not in p.title]
+    ranked = backend._exact_first("Kuala Lumpur tour", SearchFilters(), others)
+    assert ranked[0].title == "Kuala Lumpur City Tour"
+    assert backend._exact_first("tour", SearchFilters(), others) == others  # one word: Shopify's order
+
+
+def test_search_results_fit_the_runtimes_tool_result_limit():
+    from shopping_agent import Product
+
+    from my_store.shopify_backend import _fit
+
+    big = [Product(product_id=f"P{i}", title="x" * 400, price=1) for i in range(40)]
+    kept = _fit(big)
+    assert 0 < len(kept) < 40
+    assert sum(len(p.model_dump_json(exclude_none=True)) for p in kept) <= 10_500

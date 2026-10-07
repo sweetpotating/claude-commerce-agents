@@ -240,6 +240,22 @@ class CartRefused(Unavailable):
     store does not ship to), which is not true of the item, so it is reported apart."""
 
 
+# The runtime cuts a tool result at 12,000 characters, mid-JSON. Live, after the store grew,
+# a 25-result search ran to 12,360 and the model got a broken list. Keep the best matches
+# that fit with room for the envelope.
+_RESULTS_BUDGET = 10_500
+
+
+def _fit(products: list[Product]) -> list[Product]:
+    kept, used = [], 0
+    for p in products:
+        used += len(p.model_dump_json(exclude_none=True)) + 2
+        if used > _RESULTS_BUDGET and kept:
+            break
+        kept.append(p)
+    return kept
+
+
 def _singular(word: str) -> str:
     return word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss") else word
 
@@ -636,6 +652,9 @@ class ShopifyUCPBackend(StorefrontBackend):
         filters: SearchFilters | None = None,
         limit: int = 8,
     ) -> list[Product]:
+        return _fit(await self._search_products(query, filters, limit))
+
+    async def _search_products(self, query: str, filters: SearchFilters | None, limit: int) -> list[Product]:
         filters = filters or SearchFilters()
         SEARCH_SOURCE.set("live")
         await self._load_store()
@@ -663,6 +682,7 @@ class ShopifyUCPBackend(StorefrontBackend):
             # search needs every word; the index ranks by the words it does match.
             products = self._filtered(self._index_match(query), filters)[:limit]
         self._merge_into_index(products)
+        products = self._exact_first(query, filters, products)
         products = await self._expand(query, filters, limit, products)
         if not products and _RANKING_WORDS.search(query):
             # Live: "bestseller" (sorted by rating) found nothing; the catalog has no sales
@@ -696,6 +716,24 @@ class ShopifyUCPBackend(StorefrontBackend):
                     seen.add(p.product_id)
                     products.append(p)
         return products[: max(limit, 12)]
+
+    def _exact_first(self, query: str, filters: SearchFilters, products: list[Product]) -> list[Product]:
+        """Products whose title has every word of the query, first. Shopify's relevance can
+        drop the obvious match once similar products pile up: live, "Japan eSIM" returned
+        eight other countries' eSIMs and not the Japan one, after the store added more."""
+        words = [_singular(w) for w in re.findall(r"[a-z0-9][a-z0-9'-]*", query.lower())]
+        words = [w for w in words if w not in _STOPWORDS and w not in _GENERIC_WORDS]
+        if len(words) < 2 or not self._index:
+            return products
+        exact = [
+            p
+            for p in self._filtered(self._index, filters)
+            if all(re.search(rf"\b{re.escape(w)}", p.title.lower()) for w in words)
+        ]
+        if not exact:
+            return products
+        ids = {p.product_id for p in exact}
+        return exact + [p for p in products if p.product_id not in ids]
 
     def _merge_into_index(self, products: list[Product]) -> None:
         """A product live search found that the index lacks (added since the last read)."""
